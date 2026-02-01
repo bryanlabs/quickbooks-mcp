@@ -525,16 +525,16 @@ export const toolDefinitions = [
                 type: "string",
                 description: "Line description",
               },
-              department_name: {
-                type: "string",
-                description: "Department/Location name (auto-resolved to ID)",
-              },
               delete: {
                 type: "boolean",
                 description: "Set true to remove this line (requires line_id)",
               },
             },
           },
+        },
+        department_name: {
+          type: "string",
+          description: "Header-level department/location name (auto-resolved to ID)",
         },
         draft: {
           type: "boolean",

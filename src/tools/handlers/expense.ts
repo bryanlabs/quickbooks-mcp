@@ -13,7 +13,6 @@ interface ExpenseLineChange {
   account_name?: string;
   amount?: number;
   description?: string;
-  department_name?: string;
   delete?: boolean;
 }
 
@@ -35,6 +34,7 @@ export async function handleGetExpense(
     TotalAmt?: number;
     AccountRef?: { value: string; name?: string };
     EntityRef?: { value: string; name?: string; type?: string };
+    DepartmentRef?: { value: string; name?: string };
     Line?: Array<{
       Id: string;
       Amount: number;
@@ -65,6 +65,7 @@ export async function handleGetExpense(
     `Payment Type: ${expense.PaymentType}`,
     `Payment Account: ${expense.AccountRef?.name || expense.AccountRef?.value || '(none)'}`,
     `Payee: ${expense.EntityRef?.name || expense.EntityRef?.value || '(none)'}`,
+    `Department: ${expense.DepartmentRef?.name || expense.DepartmentRef?.value || '(none)'}`,
     `Date: ${expense.TxnDate}`,
     `Ref no.: ${expense.DocNumber || '(none)'}`,
     `Memo: ${expense.PrivateNote || '(none)'}`,
@@ -104,11 +105,12 @@ export async function handleEditExpense(
     txn_date?: string;
     memo?: string;
     payment_account?: string;
+    department_name?: string;
     lines?: ExpenseLineChange[];
     draft?: boolean;
   }
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const { id, txn_date, memo, payment_account, lines: lineChanges, draft = true } = args;
+  const { id, txn_date, memo, payment_account, department_name, lines: lineChanges, draft = true } = args;
 
   // Fetch current Purchase
   const current = await promisify<unknown>((cb) =>
@@ -120,6 +122,8 @@ export async function handleEditExpense(
     PaymentType: string;
     PrivateNote?: string;
     AccountRef?: { value: string; name?: string };
+    EntityRef?: { value: string; name?: string; type?: string };
+    DepartmentRef?: { value: string; name?: string };
     Line: Array<{
       Id: string;
       Amount: number;
@@ -155,6 +159,12 @@ export async function handleEditExpense(
     if (current.AccountRef) {
       updated.AccountRef = current.AccountRef;
     }
+    if (current.EntityRef) {
+      updated.EntityRef = current.EntityRef;
+    }
+    if (current.DepartmentRef) {
+      updated.DepartmentRef = current.DepartmentRef;
+    }
     // Copy lines and strip read-only fields
     updated.Line = current.Line.map(line => {
       const { LineNum, ...rest } = line as Record<string, unknown>;
@@ -177,15 +187,23 @@ export async function handleEditExpense(
     updated.AccountRef = { value: match.Id, name: match.FullyQualifiedName || match.Name };
   }
 
+  // Resolve header-level department if provided
+  if (department_name !== undefined) {
+    const deptCache = await getDepartmentCache(client);
+    let match = deptCache.byName.get(department_name.toLowerCase());
+    if (!match) match = deptCache.items.find(d =>
+      d.FullyQualifiedName?.toLowerCase().includes(department_name.toLowerCase())
+    );
+    if (!match) throw new Error(`Department not found: "${department_name}"`);
+    updated.DepartmentRef = { value: match.Id, name: match.FullyQualifiedName || match.Name };
+  }
+
   // Process line changes if provided
   // Use updated.Line if available (for full updates with stripped read-only fields), else current.Line
   let finalLines = [...((updated.Line as typeof current.Line) || current.Line)];
 
   if (lineChanges && lineChanges.length > 0) {
-    const [acctCache, deptCache] = await Promise.all([
-      getAccountCache(client),
-      getDepartmentCache(client)
-    ]);
+    const acctCache = await getAccountCache(client);
 
     const resolveAcct = (name: string) => {
       let match = acctCache.byAcctNum.get(name.toLowerCase());
@@ -194,15 +212,6 @@ export async function handleEditExpense(
         a.FullyQualifiedName?.toLowerCase().includes(name.toLowerCase())
       );
       if (!match) throw new Error(`Account not found: "${name}"`);
-      return { value: match.Id, name: match.FullyQualifiedName || match.Name };
-    };
-
-    const resolveDept = (name: string) => {
-      let match = deptCache.byName.get(name.toLowerCase());
-      if (!match) match = deptCache.items.find(d =>
-        d.FullyQualifiedName?.toLowerCase().includes(name.toLowerCase())
-      );
-      if (!match) throw new Error(`Department not found: "${name}"`);
       return { value: match.Id, name: match.FullyQualifiedName || match.Name };
     };
 
@@ -228,7 +237,6 @@ export async function handleEditExpense(
           }
           if (change.description !== undefined) line.Description = change.description;
           if (change.account_name !== undefined) detail.AccountRef = resolveAcct(change.account_name);
-          if (change.department_name !== undefined) detail.DepartmentRef = resolveDept(change.department_name);
 
           line.AccountBasedExpenseLineDetail = detail;
           line.DetailType = 'AccountBasedExpenseLineDetail';
@@ -249,7 +257,6 @@ export async function handleEditExpense(
           DetailType: 'AccountBasedExpenseLineDetail',
           AccountBasedExpenseLineDetail: {
             AccountRef: resolveAcct(change.account_name),
-            ...(change.department_name && { DepartmentRef: resolveDept(change.department_name) })
           }
         } as typeof finalLines[0];
         finalLines.push(newLine);
@@ -277,6 +284,10 @@ export async function handleEditExpense(
     if (payment_account !== undefined) {
       const newAcct = (updated.AccountRef as { name?: string })?.name || payment_account;
       previewLines.push(`  Payment Account: ${current.AccountRef?.name || '(none)'} → ${newAcct}`);
+    }
+    if (department_name !== undefined) {
+      const newDept = (updated.DepartmentRef as { name?: string })?.name || department_name;
+      previewLines.push(`  Department: ${current.DepartmentRef?.name || '(none)'} → ${newDept}`);
     }
 
     if (updated.Line) {
