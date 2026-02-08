@@ -6,6 +6,7 @@ import {
   getAccountCache,
   getDepartmentCache,
   getVendorCache,
+  resolveVendor,
 } from "../../client/index.js";
 import { writeReport, validateAmount, toDollars, formatDollars, sumCents } from "../../utils/index.js";
 
@@ -316,6 +317,7 @@ export async function handleEditBill(
   client: QuickBooks,
   args: {
     id: string;
+    vendor_name?: string;
     txn_date?: string;
     due_date?: string;
     memo?: string;
@@ -323,7 +325,7 @@ export async function handleEditBill(
     draft?: boolean;
   }
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const { id, txn_date, due_date, memo, lines: lineChanges, draft = true } = args;
+  const { id, vendor_name, txn_date, due_date, memo, lines: lineChanges, draft = true } = args;
 
   // Fetch current Bill
   const current = await promisify<unknown>((cb) =>
@@ -347,6 +349,11 @@ export async function handleEditBill(
     }>;
   };
 
+  // Resolve vendor if changing
+  const vendorRef = vendor_name
+    ? await resolveVendor(client, vendor_name)
+    : current.VendorRef;
+
   // Determine if we're modifying lines - requires full update (not sparse)
   const needsFullUpdate = lineChanges && lineChanges.length > 0;
 
@@ -355,7 +362,7 @@ export async function handleEditBill(
   const updated: Record<string, unknown> = {
     Id: current.Id,
     SyncToken: current.SyncToken,
-    VendorRef: current.VendorRef,
+    VendorRef: vendorRef,
   };
 
   // Only use sparse for non-line updates; full update needed for line modifications
@@ -473,6 +480,7 @@ export async function handleEditBill(
       'Changes:',
     ];
 
+    if (vendor_name) previewLines.push(`  Vendor: ${current.VendorRef?.name || current.VendorRef?.value} → ${(vendorRef as { name?: string }).name || vendor_name}`);
     if (txn_date !== undefined) previewLines.push(`  Date: ${current.TxnDate} → ${txn_date}`);
     if (due_date !== undefined) previewLines.push(`  Due Date: ${current.DueDate || '(none)'} → ${due_date}`);
     if (memo !== undefined) previewLines.push(`  Memo: ${current.PrivateNote || '(none)'} → ${memo}`);

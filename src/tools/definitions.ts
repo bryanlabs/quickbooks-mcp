@@ -406,13 +406,17 @@ export const toolDefinitions = [
   },
   {
     name: "edit_bill",
-    description: "Modify an existing bill. Can update date, due date, memo, and/or lines. For lines: provide line_id to update existing line, omit to add new line, set delete=true to remove.",
+    description: "Modify an existing bill. Can update vendor, date, due date, memo, and/or lines. For lines: provide line_id to update existing line, omit to add new line, set delete=true to remove.",
     inputSchema: {
       type: "object",
       properties: {
         id: {
           type: "string",
           description: "Bill ID to edit",
+        },
+        vendor_name: {
+          type: "string",
+          description: "New vendor display name (e.g., 'Simplisafe', 'PG&E'). Auto-resolved to ID.",
         },
         txn_date: {
           type: "string",
