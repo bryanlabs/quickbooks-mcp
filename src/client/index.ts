@@ -15,5 +15,6 @@ export {
   resolveAccount,
   resolveVendor,
   resolveItem,
+  resolveCustomer,
   resolveDepartmentId,
 } from './cache.js';

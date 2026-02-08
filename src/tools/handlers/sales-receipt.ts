@@ -3,10 +3,12 @@
 import QuickBooks from "node-quickbooks";
 import {
   promisify,
+  getAccountCache,
   getDepartmentCache,
   resolveItem,
+  resolveCustomer,
 } from "../../client/index.js";
-import { writeReport, validateAmount, toDollars } from "../../utils/index.js";
+import { writeReport, validateAmount, toDollars, formatDollars, sumCents } from "../../utils/index.js";
 
 interface SalesReceiptLineChange {
   line_id?: string;
@@ -17,6 +19,192 @@ interface SalesReceiptLineChange {
   unit_price?: number;
   description?: string;
   delete?: boolean;
+}
+
+interface CreateSalesReceiptLine {
+  item_name?: string;
+  item_id?: string;
+  amount?: number;
+  qty?: number;
+  unit_price?: number;
+  description?: string;
+}
+
+export async function handleCreateSalesReceipt(
+  client: QuickBooks,
+  args: {
+    txn_date: string;
+    customer_name?: string;
+    customer_id?: string;
+    deposit_to_account?: string;
+    department_name?: string;
+    department_id?: string;
+    memo?: string;
+    doc_number?: string;
+    lines: CreateSalesReceiptLine[];
+    draft?: boolean;
+  }
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const {
+    txn_date, customer_name, customer_id,
+    deposit_to_account, department_name, department_id,
+    memo, doc_number, lines, draft = true,
+  } = args;
+
+  if (!lines || lines.length === 0) {
+    throw new Error("At least one line is required");
+  }
+
+  // Resolve customer (optional)
+  let customerRef: { value: string; name: string } | undefined;
+  if (customer_id) {
+    customerRef = await resolveCustomer(client, customer_id);
+  } else if (customer_name) {
+    customerRef = await resolveCustomer(client, customer_name);
+  }
+
+  // Resolve deposit account (optional)
+  let depositAccountRef: { value: string; name: string } | undefined;
+  if (deposit_to_account) {
+    const acctCache = await getAccountCache(client);
+    let match = acctCache.byAcctNum.get(deposit_to_account.toLowerCase());
+    if (!match) match = acctCache.byName.get(deposit_to_account.toLowerCase());
+    if (!match) match = acctCache.items.find(a =>
+      a.FullyQualifiedName?.toLowerCase().includes(deposit_to_account.toLowerCase())
+    );
+    if (!match) throw new Error(`Deposit account not found: "${deposit_to_account}"`);
+    depositAccountRef = { value: match.Id, name: match.FullyQualifiedName || match.Name };
+  }
+
+  // Resolve department (header-level, optional)
+  let departmentRef: { value: string; name: string } | undefined;
+  const deptInput = department_id || department_name;
+  if (deptInput) {
+    const deptCache = await getDepartmentCache(client);
+    const byId = deptCache.byId.get(deptInput);
+    if (byId) {
+      departmentRef = { value: byId.Id, name: byId.FullyQualifiedName || byId.Name };
+    } else {
+      const byName = deptCache.byName.get(deptInput.toLowerCase());
+      if (byName) {
+        departmentRef = { value: byName.Id, name: byName.FullyQualifiedName || byName.Name };
+      } else {
+        const byPartial = deptCache.items.find(d =>
+          d.FullyQualifiedName?.toLowerCase().includes(deptInput.toLowerCase())
+        );
+        if (byPartial) {
+          departmentRef = { value: byPartial.Id, name: byPartial.FullyQualifiedName || byPartial.Name };
+        } else {
+          throw new Error(`Department not found: "${deptInput}"`);
+        }
+      }
+    }
+  }
+
+  // Resolve lines
+  const resolvedLines = await Promise.all(lines.map(async (line) => {
+    const itemInput = line.item_name || line.item_id;
+    if (!itemInput) {
+      throw new Error("Each line must have either item_name or item_id");
+    }
+    if (line.amount === undefined && (line.qty === undefined || line.unit_price === undefined)) {
+      throw new Error(`Line for "${itemInput}" requires amount, or both qty and unit_price`);
+    }
+
+    const itemRef = await resolveItem(client, itemInput);
+
+    const qty = line.qty ?? 1;
+    let amountCents: number;
+    let unitPriceDollars: number;
+
+    if (line.amount !== undefined) {
+      amountCents = validateAmount(line.amount, `Line for ${itemRef.name}`);
+      unitPriceDollars = toDollars(amountCents) / qty;
+    } else {
+      const upCents = validateAmount(line.unit_price!, `Line unit_price for ${itemRef.name}`);
+      unitPriceDollars = toDollars(upCents);
+      amountCents = upCents * qty;
+    }
+
+    return {
+      itemRef,
+      qty,
+      unitPriceDollars,
+      amountCents,
+      amountDollars: toDollars(amountCents),
+      description: line.description,
+    };
+  }));
+
+  // Calculate total
+  const totalCents = sumCents(resolvedLines.map(l => l.amountCents));
+
+  // Build QuickBooks SalesReceipt object
+  const srObject: Record<string, unknown> = {
+    TxnDate: txn_date,
+    ...(customerRef && { CustomerRef: customerRef }),
+    ...(depositAccountRef && { DepositToAccountRef: depositAccountRef }),
+    ...(departmentRef && { DepartmentRef: departmentRef }),
+    ...(memo && { PrivateNote: memo }),
+    ...(doc_number && { DocNumber: doc_number }),
+    Line: resolvedLines.map((line) => ({
+      Amount: line.amountDollars,
+      DetailType: "SalesItemLineDetail",
+      ...(line.description && { Description: line.description }),
+      SalesItemLineDetail: {
+        ItemRef: line.itemRef,
+        Qty: line.qty,
+        UnitPrice: line.unitPriceDollars,
+      },
+    })),
+  };
+
+  if (draft) {
+    const preview = [
+      "DRAFT - Sales Receipt Preview",
+      "",
+      `Customer: ${customerRef?.name || "(none)"}`,
+      `Date: ${txn_date}`,
+      `Ref no.: ${doc_number || "(auto-assign)"}`,
+      `Deposit To: ${depositAccountRef?.name || "(default)"}`,
+      `Department: ${departmentRef?.name || "(none)"}`,
+      `Memo: ${memo || "(none)"}`,
+      `Total: $${formatDollars(totalCents)}`,
+      "",
+      "Lines:",
+      ...resolvedLines.map(l =>
+        `  ${l.itemRef.name}: Qty ${l.qty} × $${l.unitPriceDollars.toFixed(2)} = $${l.amountDollars.toFixed(2)}${l.description ? ` "${l.description}"` : ""}`
+      ),
+      "",
+      "Set draft=false to create this sales receipt.",
+    ].join("\n");
+
+    return {
+      content: [{ type: "text", text: preview }],
+    };
+  }
+
+  // Create the sales receipt
+  const result = await promisify<unknown>((cb) =>
+    client.createSalesReceipt(srObject, cb)
+  ) as { Id: string; DocNumber?: string };
+
+  const qboUrl = `https://app.qbo.intuit.com/app/salesreceipt?txnId=${result.Id}`;
+
+  const response = [
+    "Sales Receipt Created!",
+    "",
+    `Customer: ${customerRef?.name || "(none)"}`,
+    `Ref no.: ${result.DocNumber || "(auto-assigned)"}`,
+    `Date: ${txn_date}`,
+    `Total: $${formatDollars(totalCents)}`,
+    "",
+    `View in QuickBooks: ${qboUrl}`,
+  ].join("\n");
+
+  return {
+    content: [{ type: "text", text: response }],
+  };
 }
 
 export async function handleGetSalesReceipt(

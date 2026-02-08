@@ -715,6 +715,86 @@ export const toolDefinitions = [
     },
   },
   {
+    name: "create_sales_receipt",
+    description: "Create a sales receipt. Accepts item/customer/department names (will lookup IDs automatically). Lines reference items (products/services) not accounts. Returns receipt details and a link to view in QuickBooks.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        txn_date: {
+          type: "string",
+          description: "Transaction date in YYYY-MM-DD format",
+        },
+        customer_name: {
+          type: "string",
+          description: "Customer display name (e.g., 'Cash Sales'). Will be looked up to get ID.",
+        },
+        customer_id: {
+          type: "string",
+          description: "Customer ID (use if you already know it, otherwise use customer_name)",
+        },
+        deposit_to_account: {
+          type: "string",
+          description: "Bank account name or number to deposit into (e.g., 'Undeposited Funds', '1000'). Will be looked up to get ID.",
+        },
+        department_name: {
+          type: "string",
+          description: "Header-level department/location name (e.g., '20358', 'Cotati'). Will be looked up to get ID.",
+        },
+        department_id: {
+          type: "string",
+          description: "Header-level department/location ID (use if you already know it, otherwise use department_name)",
+        },
+        memo: {
+          type: "string",
+          description: "Private memo for the sales receipt",
+        },
+        doc_number: {
+          type: "string",
+          description: "Reference number for the sales receipt (optional)",
+        },
+        lines: {
+          type: "array",
+          description: "Array of line items. Each line references an item (product/service). Provide item_name OR item_id (name preferred).",
+          items: {
+            type: "object",
+            properties: {
+              item_name: {
+                type: "string",
+                description: "Item (product/service) name (e.g., 'Sales', 'Catering'). Will be looked up to get ID.",
+              },
+              item_id: {
+                type: "string",
+                description: "Item ID (use if you already know it, otherwise use item_name)",
+              },
+              amount: {
+                type: "number",
+                description: "Line amount (positive or negative). Negative for adjustments/discounts.",
+              },
+              qty: {
+                type: "number",
+                description: "Quantity (default: 1)",
+              },
+              unit_price: {
+                type: "number",
+                description: "Price per unit (if omitted, computed from amount / qty)",
+              },
+              description: {
+                type: "string",
+                description: "Line description (optional)",
+              },
+            },
+            required: [],
+          },
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without creating (default: true)",
+        },
+      },
+      required: ["txn_date", "lines"],
+    },
+  },
+  {
     name: "create_deposit",
     description: "Create a bank deposit. Accepts account/department/vendor names (will lookup IDs automatically). Lines represent the sources of the deposit — amounts can be positive (income) or negative (fees, deductions). QuickBooks computes the total from line amounts. Returns deposit details and a link to view in QuickBooks.",
     inputSchema: {

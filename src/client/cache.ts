@@ -4,6 +4,7 @@ import QuickBooks from "node-quickbooks";
 import { promisify } from "./promisify.js";
 import {
   CachedAccount,
+  CachedCustomer,
   CachedDepartment,
   CachedVendor,
   CachedItem,
@@ -23,6 +24,9 @@ let vendorCache: VendorCache | null = null;
 // Item cache: lazy per-entry lookup (not bulk-loaded like others)
 const itemCacheById = new Map<string, CachedItem>();
 const itemCacheByName = new Map<string, CachedItem>(); // lowercase key
+// Customer cache: lazy per-entry lookup (companies can have thousands)
+const customerCacheById = new Map<string, CachedCustomer>();
+const customerCacheByName = new Map<string, CachedCustomer>(); // lowercase key
 
 export function clearLookupCache(): void {
   departmentCache = null;
@@ -30,6 +34,8 @@ export function clearLookupCache(): void {
   vendorCache = null;
   itemCacheById.clear();
   itemCacheByName.clear();
+  customerCacheById.clear();
+  customerCacheByName.clear();
 }
 
 // Helper to extract entities from QB query response with type safety
@@ -219,4 +225,51 @@ export async function resolveDepartmentId(client: QuickBooks, department: string
 
   // If nothing found, return as-is (let API handle error)
   return department;
+}
+
+// Resolve customer by name or ID using lazy per-entry cache
+// Unlike vendor/account caches, customers are fetched on demand (companies can have thousands)
+export async function resolveCustomer(client: QuickBooks, nameOrId: string): Promise<{ value: string; name: string }> {
+  // Check cache first (with TTL)
+  const cached = customerCacheById.get(nameOrId) || customerCacheByName.get(nameOrId.toLowerCase());
+  if (cached && (Date.now() - cached.fetchedAt) < LOOKUP_CACHE_TTL_MS) {
+    return { value: cached.Id, name: cached.DisplayName };
+  }
+
+  // Query QB for this specific customer — exact DisplayName match first
+  const result = await promisify<unknown>((cb) =>
+    client.findCustomers([
+      { field: 'DisplayName', value: nameOrId, operator: '=' },
+      { field: 'Active', value: true, operator: '=' },
+    ], cb)
+  );
+  let customers = extractQueryResults<{ Id: string; DisplayName: string; Active?: boolean }>(result, 'Customer');
+
+  // If no exact match, try LIKE for partial matching
+  if (customers.length === 0) {
+    const partialResult = await promisify<unknown>((cb) =>
+      client.findCustomers([
+        { field: 'DisplayName', value: `%${nameOrId}%`, operator: 'LIKE' },
+        { field: 'Active', value: true, operator: '=' },
+      ], cb)
+    );
+    customers = extractQueryResults<typeof customers[0]>(partialResult, 'Customer');
+  }
+
+  if (customers.length === 0) {
+    throw new Error(`Customer not found: "${nameOrId}". Try using the exact customer display name or ID.`);
+  }
+
+  // Use first match and cache it
+  const customer = customers[0];
+  const entry: CachedCustomer = {
+    Id: customer.Id,
+    DisplayName: customer.DisplayName,
+    Active: customer.Active,
+    fetchedAt: Date.now(),
+  };
+  customerCacheById.set(customer.Id, entry);
+  customerCacheByName.set(customer.DisplayName.toLowerCase(), entry);
+
+  return { value: customer.Id, name: customer.DisplayName };
 }

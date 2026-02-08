@@ -44,6 +44,13 @@ export interface VendorCache {
   fetchedAt: number;
 }
 
+export interface CachedCustomer {
+  Id: string;
+  DisplayName: string;
+  Active?: boolean;
+  fetchedAt: number;   // per-entry TTL for lazy cache
+}
+
 export interface CachedItem {
   Id: string;
   Name: string;
