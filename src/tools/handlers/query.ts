@@ -7,12 +7,14 @@ import {
   paginatedQuery,
   SAFETY_LIMIT,
   WARNING_THRESHOLD,
+  buildQueryErrorMessage,
 } from "../../query/index.js";
+import { isQBError, extractQBErrorInfo } from "../../types/index.js";
 
 export async function handleQuery(
   client: QuickBooks,
   args: { query: string }
-): Promise<{ content: Array<{ type: string; text: string }> }> {
+): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
   const { query } = args;
 
   // Parse pagination params from query
@@ -40,8 +42,24 @@ export async function handleQuery(
     throw new Error(`Unknown entity type: ${entity}. Try: Customer, Vendor, Invoice, Bill, Account, Item, Department, JournalEntry, Purchase, Payment, SalesReceipt, Deposit`);
   }
 
-  // Execute paginated query
-  const paginationResult = await paginatedQuery(client, finderMethod, pagination);
+  // Execute paginated query with enhanced error handling
+  let paginationResult;
+  try {
+    paginationResult = await paginatedQuery(client, finderMethod, pagination);
+  } catch (error) {
+    // QB query errors (non-filterable fields, bad syntax) get enhanced messages
+    if (isQBError(error)) {
+      const { code, message, detail } = extractQBErrorInfo(error);
+      const errorMessage = buildQueryErrorMessage(entity, code, message, detail, error);
+      return {
+        content: [{ type: "text", text: errorMessage }],
+        isError: true,
+      };
+    }
+    // Non-QB errors (auth, network) re-throw for executeTool to handle
+    throw error;
+  }
+
   let { entities } = paginationResult;
   const { entityKey, apiCalls, truncated, startPositionSpecified, hasMore, returnedCount, requestedLimit } = paginationResult;
   const count = entities.length;

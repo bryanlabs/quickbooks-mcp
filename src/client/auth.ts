@@ -6,7 +6,7 @@ import type { QBCredentials, CredentialProvider } from "../credentials/index.js"
 import { refreshAccessToken } from "../credentials/oauth-client.js";
 import { promisify } from "./promisify.js";
 import { clearLookupCache } from "./cache.js";
-import { isQBError } from "../types/index.js";
+import { isQBError, extractQBErrorInfo } from "../types/index.js";
 
 // Sandbox mode for development/testing
 const useSandbox = process.env.QBO_SANDBOX === "true";
@@ -32,7 +32,7 @@ export function clearCredentialsCache(): void {
 // Check if error is an authentication failure
 export function isAuthError(error: unknown): boolean {
   if (isQBError(error)) {
-    const code = error.fault?.error?.[0]?.code;
+    const { code } = extractQBErrorInfo(error);
     return code === '3200' || code === '401';
   }
   return false;

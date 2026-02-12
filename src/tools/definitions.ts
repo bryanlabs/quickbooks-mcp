@@ -39,7 +39,7 @@ export const toolDefinitions = [
       properties: {
         query: {
           type: "string",
-          description: "The SQL-like query string. Common entities: Customer, Vendor, Invoice, Bill, Account, Item, Department, JournalEntry, Purchase, Payment, SalesReceipt, Deposit. Add MAXRESULTS N to limit results (default: 1000). Note: DepartmentRef and AccountRef are not filterable in QB API - use client-side filtering with jq instead.",
+          description: "The SQL-like query string. Common entities: Customer, Vendor, Invoice, Bill, Account, Item, Department, JournalEntry, Purchase, Payment, SalesReceipt, Deposit. Add MAXRESULTS N to limit results (default: 1000). Note: Most transaction fields (DepartmentRef, AccountRef, Line) are not filterable. Error responses include valid filterable fields for the entity. Use query_account_transactions for account/department filtering.",
         },
       },
       required: ["query"],

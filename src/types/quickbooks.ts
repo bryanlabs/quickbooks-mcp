@@ -7,19 +7,43 @@ export interface QBRef {
 }
 
 // QuickBooks API error structure
+// QB API returns capitalized Fault.Error, but node-quickbooks may use lowercase
 export interface QBError {
+  Fault?: {
+    Error?: Array<{ code?: string; Code?: string; message?: string; Message?: string; Detail?: string; detail?: string }>;
+  };
   fault?: {
-    error?: Array<{ code?: string; message?: string }>;
+    error?: Array<{ code?: string; Code?: string; message?: string; Message?: string; Detail?: string; detail?: string }>;
   };
 }
 
-// Type guard for QB error objects
+// Type guard for QB error objects (handles both casings)
 export function isQBError(error: unknown): error is QBError {
   if (typeof error !== 'object' || error === null) return false;
   const err = error as Record<string, unknown>;
-  if (!err.fault || typeof err.fault !== 'object') return false;
-  const fault = err.fault as Record<string, unknown>;
-  return Array.isArray(fault.error);
+  // Check capitalized (actual QB API)
+  if (err.Fault && typeof err.Fault === 'object') {
+    const fault = err.Fault as Record<string, unknown>;
+    if (Array.isArray(fault.Error)) return true;
+  }
+  // Check lowercase (node-quickbooks legacy)
+  if (err.fault && typeof err.fault === 'object') {
+    const fault = err.fault as Record<string, unknown>;
+    if (Array.isArray(fault.error)) return true;
+  }
+  return false;
+}
+
+// Extract normalized error info from a QB error (casing-safe)
+export function extractQBErrorInfo(error: QBError): { code?: string; message?: string; detail?: string } {
+  const errors = error.Fault?.Error ?? error.fault?.error;
+  if (!errors || errors.length === 0) return {};
+  const first = errors[0];
+  return {
+    code: first.Code ?? first.code,
+    message: first.Message ?? first.message,
+    detail: first.Detail ?? first.detail,
+  };
 }
 
 // QuickBooks entity base
