@@ -8,6 +8,7 @@ import {
   SAFETY_LIMIT,
   WARNING_THRESHOLD,
   buildQueryErrorMessage,
+  summarizeTransactionLines,
 } from "../../query/index.js";
 import { isQBError, extractQBErrorInfo } from "../../types/index.js";
 
@@ -104,6 +105,12 @@ export async function handleQuery(
     summaryLines.push(`To fetch more: Add "STARTPOSITION ${nextPosition}" to query.`);
   } else if (count >= WARNING_THRESHOLD) {
     summaryLines.push(`Warning: Large result set (>${WARNING_THRESHOLD} records)`);
+  }
+
+  const txnSummary = summarizeTransactionLines(entity, entities);
+  if (txnSummary) {
+    summaryLines.push('');
+    summaryLines.push(txnSummary);
   }
 
   return outputReport(`query-${entity.toLowerCase()}`, result, summaryLines.join("\n"));
