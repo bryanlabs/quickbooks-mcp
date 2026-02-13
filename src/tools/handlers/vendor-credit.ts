@@ -21,7 +21,6 @@ interface VendorCreditLineChange {
   account_name?: string;
   amount?: number;
   description?: string;
-  department_name?: string;
   delete?: boolean;
 }
 
@@ -387,10 +386,7 @@ export async function handleEditVendorCredit(
   let finalLines = [...((updated.Line as typeof current.Line) || current.Line)];
 
   if (lineChanges && lineChanges.length > 0) {
-    const [acctCache, deptCache] = await Promise.all([
-      getAccountCache(client),
-      getDepartmentCache(client)
-    ]);
+    const acctCache = await getAccountCache(client);
 
     const resolveAcct = (name: string) => {
       let match = acctCache.byAcctNum.get(name.toLowerCase());
@@ -399,15 +395,6 @@ export async function handleEditVendorCredit(
         a.FullyQualifiedName?.toLowerCase().includes(name.toLowerCase())
       );
       if (!match) throw new Error(`Account not found: "${name}"`);
-      return { value: match.Id, name: match.FullyQualifiedName || match.Name };
-    };
-
-    const resolveDept = (name: string) => {
-      let match = deptCache.byName.get(name.toLowerCase());
-      if (!match) match = deptCache.items.find(d =>
-        d.FullyQualifiedName?.toLowerCase().includes(name.toLowerCase())
-      );
-      if (!match) throw new Error(`Department not found: "${name}"`);
       return { value: match.Id, name: match.FullyQualifiedName || match.Name };
     };
 
@@ -433,7 +420,6 @@ export async function handleEditVendorCredit(
           }
           if (change.description !== undefined) line.Description = change.description;
           if (change.account_name !== undefined) detail.AccountRef = resolveAcct(change.account_name);
-          if (change.department_name !== undefined) detail.DepartmentRef = resolveDept(change.department_name);
 
           line.AccountBasedExpenseLineDetail = detail;
           line.DetailType = 'AccountBasedExpenseLineDetail';
@@ -452,7 +438,6 @@ export async function handleEditVendorCredit(
           DetailType: 'AccountBasedExpenseLineDetail',
           AccountBasedExpenseLineDetail: {
             AccountRef: resolveAcct(change.account_name),
-            ...(change.department_name && { DepartmentRef: resolveDept(change.department_name) })
           }
         } as typeof finalLines[0];
         finalLines.push(newLine);

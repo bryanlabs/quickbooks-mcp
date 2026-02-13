@@ -28,7 +28,6 @@ interface DepositLineInput {
   amount: number;
   account_name: string;
   description?: string;
-  department_name?: string;
 }
 
 interface DepositLine {
@@ -374,7 +373,7 @@ export async function handleEditDeposit(
 
   // Fetch caches when needed for header-level resolution or line processing
   const needsAcctCache = deposit_to_account !== undefined || (newLines && newLines.length > 0);
-  const needsDeptCache = department_name !== undefined || (newLines && newLines.some(l => l.department_name));
+  const needsDeptCache = department_name !== undefined;
 
   const [acctCache, deptCache] = await Promise.all([
     needsAcctCache ? getAccountCache(client) : Promise.resolve(null),
@@ -440,9 +439,6 @@ export async function handleEditDeposit(
 
       if (input.description !== undefined) {
         line.Description = input.description;
-      }
-      if (input.department_name !== undefined) {
-        line.DepositLineDetail!.ClassRef = resolveDepartmentRef(deptCache!, input.department_name);
       }
 
       finalLines.push(line);

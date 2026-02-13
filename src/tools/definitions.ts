@@ -406,7 +406,7 @@ export const toolDefinitions = [
   },
   {
     name: "edit_bill",
-    description: "Modify an existing bill. Can update vendor, date, due date, memo, and/or lines. For lines: provide line_id to update existing line, omit to add new line, set delete=true to remove.",
+    description: "Modify an existing bill. Can update vendor, date, due date, memo, and/or lines. For lines: provide line_id to update existing line, omit to add new line, set delete=true to remove. Note: DepartmentRef is header-level only — lines do not support department.",
     inputSchema: {
       type: "object",
       properties: {
@@ -451,10 +451,6 @@ export const toolDefinitions = [
               description: {
                 type: "string",
                 description: "Line description",
-              },
-              department_name: {
-                type: "string",
-                description: "Department/Location name (auto-resolved to ID)",
               },
               delete: {
                 type: "boolean",
@@ -1137,10 +1133,6 @@ export const toolDefinitions = [
                 type: "string",
                 description: "Line description",
               },
-              department_name: {
-                type: "string",
-                description: "Line-level department/location name (auto-resolved to ID)",
-              },
             },
             required: ["amount", "account_name"],
           },
@@ -1245,7 +1237,7 @@ export const toolDefinitions = [
   },
   {
     name: "edit_vendor_credit",
-    description: "Modify an existing vendor credit. Can update vendor, date, memo, ref number, and/or lines. For lines: provide line_id to update existing line, omit line_id to add new line (requires amount and account_name), set delete=true to remove.",
+    description: "Modify an existing vendor credit. Can update vendor, date, memo, ref number, and/or lines. For lines: provide line_id to update existing line, omit line_id to add new line (requires amount and account_name), set delete=true to remove. Note: DepartmentRef is header-level only — lines do not support department.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1290,10 +1282,6 @@ export const toolDefinitions = [
               description: {
                 type: "string",
                 description: "Line description",
-              },
-              department_name: {
-                type: "string",
-                description: "Line-level department/location name (auto-resolved to ID)",
               },
               delete: {
                 type: "boolean",
