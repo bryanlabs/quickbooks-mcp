@@ -8,15 +8,17 @@ This is a Model Context Protocol (MCP) server that provides Claude with access t
 
 ```
 src/
-├── index.ts           # MCP server entry point, tool definitions
+├── index.ts           # MCP server entry point (stdio)
+├── lambda.ts          # Lambda entry point (HTTP transport)
 ├── client/            # QuickBooks API client and caching
 ├── types/             # TypeScript type definitions
-├── utils/             # Utility functions (files, URLs, money)
+├── utils/             # Utility functions (files, URLs, money, output)
 ├── query/             # Query helpers and pagination
-├── reports/           # Report handlers (P&L, Balance Sheet, Trial Balance)
+├── reports/           # Report extraction helpers (P&L, Balance Sheet)
 └── tools/
-    ├── definitions/   # Tool schema definitions
-    └── handlers/      # Tool implementation handlers
+    ├── definitions.ts # All tool schema definitions (single file)
+    ├── index.ts       # Tool registry, handler map, auth retry dispatcher
+    └── handlers/      # One file per tool (or per entity group)
 ```
 
 ## Key Conventions
@@ -52,15 +54,26 @@ Names are auto-resolved to IDs using cached lookups:
 - `department_name: "Santa Rosa"` → looks up ID from cache
 - Caches are session-scoped with TTL
 
+## Adding a New Tool
+
+Every new tool requires changes in **4 files** plus README:
+
+1. **`src/tools/handlers/<name>.ts`** — Create handler function
+2. **`src/tools/handlers/index.ts`** — Add barrel export
+3. **`src/tools/definitions.ts`** — Add tool schema (name, description, inputSchema)
+4. **`src/tools/index.ts`** — Import handler + register in `toolHandlers.set()`
+5. **`README.md`** — Add row to Available Tools table
+
+Follow the pattern of the nearest existing tool. Use `outputReport()` for any tool that returns data (handles stdio vs HTTP mode automatically).
+
 ## Common Files
 
 | Task | File |
 |------|------|
-| Add a new tool | `src/tools/definitions/*.ts`, `src/tools/handlers/*.ts`, `src/index.ts` |
-| Modify reports | `src/reports/handlers/*.ts` |
 | Change query behavior | `src/query/pagination.ts` |
 | Money utilities | `src/utils/money.ts` |
 | API client | `src/client/quickbooks.ts` |
+| Output mode (stdio/http) | `src/utils/output.ts` |
 
 ## Critical Limitations
 
@@ -74,11 +87,18 @@ QBO expenses (Purchases) only support **one department at the header level**. Yo
 ## Building and Testing
 
 ```bash
-npm run build     # Compile TypeScript
-npm run watch     # Watch mode for development
+npm run build         # Compile TypeScript (tsc)
+npm run build:lambda  # Bundle for Lambda (esbuild → dist-lambda/handler.mjs)
+npm run watch         # Watch mode for development
 ```
 
-After changes, restart Claude Code to reload the MCP server.
+Both builds must pass before committing. After changes, restart Claude Code to reload the MCP server.
+
+## Workflow
+
+- Feature backlog is tracked in `wmc-reconcile/docs/quickbooks-mcp-backlog.md` — move items to Completed when done
+- Use `closes #N` in commit messages to auto-close GitHub issues
+- Commit messages: short imperative subject, body explains the "why"
 
 ## QuickBooks API Notes
 
