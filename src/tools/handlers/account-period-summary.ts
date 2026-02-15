@@ -217,7 +217,6 @@ export async function handleAccountPeriodSummary(
     department: department || undefined,
     accountingMethod: accounting_method || "Accrual",
     summary,
-    rawReport: report,
   };
 
   return outputReport("account-period-summary", reportData, summaryLines.join("\n"));
