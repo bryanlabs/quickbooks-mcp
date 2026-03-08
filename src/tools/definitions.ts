@@ -574,6 +574,14 @@ export const toolDefinitions = [
           type: "string",
           description: "Header-level department/location name (auto-resolved to ID)",
         },
+        entity_name: {
+          type: "string",
+          description: "Payee/vendor display name (e.g., 'Cozzini Bros., Inc.'). Will be looked up to get ID.",
+        },
+        entity_id: {
+          type: "string",
+          description: "Payee/vendor ID (use if you already know it, otherwise use entity_name)",
+        },
         draft: {
           type: "boolean",
           description: "If true, validate and show preview without saving (default: true)",

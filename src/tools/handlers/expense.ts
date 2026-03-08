@@ -312,11 +312,13 @@ export async function handleEditExpense(
     memo?: string;
     payment_account?: string;
     department_name?: string;
+    entity_name?: string;
+    entity_id?: string;
     lines?: ExpenseLineChange[];
     draft?: boolean;
   }
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const { id, txn_date, memo, payment_account, department_name, lines: lineChanges, draft = true } = args;
+  const { id, txn_date, memo, payment_account, department_name, entity_name, entity_id, lines: lineChanges, draft = true } = args;
 
   // Fetch current Purchase
   const current = await promisify<unknown>((cb) =>
@@ -404,6 +406,30 @@ export async function handleEditExpense(
     );
     if (!match) throw new Error(`Department not found: "${department_name}"`);
     updated.DepartmentRef = { value: match.Id, name: match.FullyQualifiedName || match.Name };
+  }
+
+  // Resolve entity (vendor/payee) if provided
+  const entityInput = entity_id || entity_name;
+  if (entityInput) {
+    const vendorCacheData = await getVendorCache(client);
+    const byId = vendorCacheData.byId.get(entityInput);
+    if (byId) {
+      updated.EntityRef = { value: byId.Id, name: byId.DisplayName, type: "Vendor" };
+    } else {
+      const byName = vendorCacheData.byName.get(entityInput.toLowerCase());
+      if (byName) {
+        updated.EntityRef = { value: byName.Id, name: byName.DisplayName, type: "Vendor" };
+      } else {
+        const byPartial = vendorCacheData.items.find(v =>
+          v.DisplayName.toLowerCase().includes(entityInput.toLowerCase())
+        );
+        if (byPartial) {
+          updated.EntityRef = { value: byPartial.Id, name: byPartial.DisplayName, type: "Vendor" };
+        } else {
+          throw new Error(`Vendor not found: "${entityInput}"`);
+        }
+      }
+    }
   }
 
   // Process line changes if provided
@@ -496,6 +522,10 @@ export async function handleEditExpense(
     if (department_name !== undefined) {
       const newDept = (updated.DepartmentRef as { name?: string })?.name || department_name;
       previewLines.push(`  Department: ${current.DepartmentRef?.name || '(none)'} → ${newDept}`);
+    }
+    if (entityInput) {
+      const newEntity = (updated.EntityRef as { name?: string })?.name || entityInput;
+      previewLines.push(`  Vendor/Payee: ${current.EntityRef?.name || '(none)'} → ${newEntity}`);
     }
 
     if (updated.Line) {
