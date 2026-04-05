@@ -109,12 +109,18 @@ export async function handleCreateBillPayment(
     paymentObj.CreditCardPayment = { CCAccountRef: ccRef };
   }
 
-  // Link to specific bills if provided
+  // Line is required by the QBO API. Link to specific bills if provided.
   if (bill_ids && bill_ids.length > 0) {
     paymentObj.Line = bill_ids.map(billId => ({
-      Amount: total_amt / bill_ids.length, // Split evenly by default
+      Amount: total_amt / bill_ids.length,
       LinkedTxn: [{ TxnId: billId, TxnType: "Bill" }],
     }));
+  } else {
+    // Unapplied payment (not linked to any specific bill)
+    paymentObj.Line = [{
+      Amount: total_amt,
+      LinkedTxn: [],
+    }];
   }
 
   if (draft) {
