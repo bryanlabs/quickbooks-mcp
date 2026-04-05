@@ -332,6 +332,10 @@ QBO_INLINE_OUTPUT=true
 | `create_vendor_credit` | Create a vendor credit |
 | `get_vendor_credit` | Fetch a vendor credit by ID |
 | `edit_vendor_credit` | Modify an existing vendor credit |
+| **Vendors** | |
+| `create_vendor` | Create a vendor with contact info, 1099 status, and payment terms |
+| `get_vendor` | Fetch a vendor by ID (tax ID returned masked) |
+| `edit_vendor` | Modify an existing vendor (set active=false to deactivate) |
 | **Delete** | |
 | `delete_entity` | Delete any transaction (journal entry, bill, invoice, deposit, sales receipt, expense, vendor credit) |
 
