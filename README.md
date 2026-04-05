@@ -332,8 +332,23 @@ QBO_INLINE_OUTPUT=true
 | `create_vendor_credit` | Create a vendor credit |
 | `get_vendor_credit` | Fetch a vendor credit by ID |
 | `edit_vendor_credit` | Modify an existing vendor credit |
+| **Customers** | |
+| `create_customer` | Create a customer or sub-customer |
+| `get_customer` | Fetch a customer by ID |
+| `edit_customer` | Modify an existing customer (set active=false to deactivate) |
+| **Vendors** | |
+| `create_vendor` | Create a vendor with contact info, 1099 status, and payment terms |
+| `get_vendor` | Fetch a vendor by ID (tax ID returned masked) |
+| `edit_vendor` | Modify an existing vendor (set active=false to deactivate) |
+| **Bill Payments** | |
+| `create_bill_payment` | Record a bill payment (Check or CreditCard) linked to vendor bills |
+| `get_bill_payment` | Fetch a bill payment by ID |
+| `edit_bill_payment` | Modify an existing bill payment |
+| **Employees** | |
+| `get_employee` | Fetch an employee by ID |
+| `edit_employee` | Modify an existing employee (set active=false to deactivate) |
 | **Delete** | |
-| `delete_entity` | Delete any transaction (journal entry, bill, invoice, deposit, sales receipt, expense, vendor credit) |
+| `delete_entity` | Delete any transaction (journal entry, bill, invoice, deposit, sales receipt, expense, vendor credit, bill payment) |
 
 ---
 

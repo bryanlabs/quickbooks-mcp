@@ -35,6 +35,14 @@ import {
   handleCreateCustomer,
   handleGetCustomer,
   handleEditCustomer,
+  handleCreateVendor,
+  handleGetVendor,
+  handleEditVendor,
+  handleCreateBillPayment,
+  handleGetBillPayment,
+  handleEditBillPayment,
+  handleGetEmployee,
+  handleEditEmployee,
   handleDeleteEntity,
   handleAuthenticate,
 } from "./handlers/index.js";
@@ -80,6 +88,14 @@ toolHandlers.set("edit_vendor_credit", (client, args) => handleEditVendorCredit(
 toolHandlers.set("create_customer", (client, args) => handleCreateCustomer(client, args as Parameters<typeof handleCreateCustomer>[1]));
 toolHandlers.set("get_customer", (client, args) => handleGetCustomer(client, args as { id: string }));
 toolHandlers.set("edit_customer", (client, args) => handleEditCustomer(client, args as Parameters<typeof handleEditCustomer>[1]));
+toolHandlers.set("create_vendor", (client, args) => handleCreateVendor(client, args as Parameters<typeof handleCreateVendor>[1]));
+toolHandlers.set("get_vendor", (client, args) => handleGetVendor(client, args as { id: string }));
+toolHandlers.set("edit_vendor", (client, args) => handleEditVendor(client, args as Parameters<typeof handleEditVendor>[1]));
+toolHandlers.set("create_bill_payment", (client, args) => handleCreateBillPayment(client, args as Parameters<typeof handleCreateBillPayment>[1]));
+toolHandlers.set("get_bill_payment", (client, args) => handleGetBillPayment(client, args as { id: string }));
+toolHandlers.set("edit_bill_payment", (client, args) => handleEditBillPayment(client, args as Parameters<typeof handleEditBillPayment>[1]));
+toolHandlers.set("get_employee", (client, args) => handleGetEmployee(client, args as { id: string }));
+toolHandlers.set("edit_employee", (client, args) => handleEditEmployee(client, args as Parameters<typeof handleEditEmployee>[1]));
 toolHandlers.set("delete_entity", (client, args) => handleDeleteEntity(client, args as Parameters<typeof handleDeleteEntity>[1]));
 
 // Execute tool with auth retry logic

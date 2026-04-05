@@ -1346,13 +1346,13 @@ export const toolDefinitions = [
   },
   {
     name: "delete_entity",
-    description: "Permanently delete a QuickBooks transaction. Supports journal entries, bills, invoices, deposits, sales receipts, expenses, and vendor credits. Uses a two-step flow: first call previews what will be deleted, second call with confirm=true executes the deletion. Note: Customers cannot be deleted — use edit_customer with active=false to deactivate instead.",
+    description: "Permanently delete a QuickBooks transaction. Supports journal entries, bills, invoices, deposits, sales receipts, expenses, vendor credits, and bill payments. Uses a two-step flow: first call previews what will be deleted, second call with confirm=true executes the deletion. Note: Customers and Vendors cannot be deleted — use edit_customer/edit_vendor with active=false to deactivate instead.",
     inputSchema: {
       type: "object",
       properties: {
         entity_type: {
           type: "string",
-          enum: ["journal_entry", "bill", "invoice", "deposit", "sales_receipt", "expense", "vendor_credit"],
+          enum: ["journal_entry", "bill", "invoice", "deposit", "sales_receipt", "expense", "vendor_credit", "bill_payment"],
           description: "The type of entity to delete.",
         },
         id: {
@@ -1606,6 +1606,417 @@ export const toolDefinitions = [
         sales_term_ref: {
           type: "string",
           description: "Default payment terms name (e.g., 'Net 30'). Auto-resolved to ID.",
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without saving (default: true)",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  // --- Vendor tools ---
+  {
+    name: "create_vendor",
+    description: "Create a vendor. Accepts name parts, contact info, address, 1099 status, and payment terms. Returns vendor details and a link to view in QuickBooks.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        display_name: {
+          type: "string",
+          description: "Primary display name (must be unique across Customers, Employees, and Vendors)",
+        },
+        given_name: {
+          type: "string",
+          description: "First/given name (optional)",
+        },
+        middle_name: {
+          type: "string",
+          description: "Middle name (optional)",
+        },
+        family_name: {
+          type: "string",
+          description: "Last/family name (optional)",
+        },
+        suffix: {
+          type: "string",
+          description: "Name suffix, e.g., 'Jr.' (optional)",
+        },
+        title: {
+          type: "string",
+          description: "Name title, e.g., 'Mr.', 'Ms.' (optional)",
+        },
+        company_name: {
+          type: "string",
+          description: "Company name (optional)",
+        },
+        print_on_check_name: {
+          type: "string",
+          description: "Name printed on checks (defaults to DisplayName if not set)",
+        },
+        email: {
+          type: "string",
+          description: "Primary email address (optional)",
+        },
+        phone: {
+          type: "string",
+          description: "Primary phone number (optional)",
+        },
+        mobile: {
+          type: "string",
+          description: "Mobile phone number (optional)",
+        },
+        fax: {
+          type: "string",
+          description: "Fax number (optional)",
+        },
+        website: {
+          type: "string",
+          description: "Website URL (optional)",
+        },
+        bill_address: {
+          type: "object",
+          description: "Billing address (optional)",
+          properties: {
+            line1: { type: "string" },
+            line2: { type: "string" },
+            line3: { type: "string" },
+            city: { type: "string" },
+            country_sub_division_code: { type: "string", description: "State/province code" },
+            postal_code: { type: "string" },
+            country: { type: "string" },
+          },
+        },
+        acct_num: {
+          type: "string",
+          description: "Your account number with this vendor (optional)",
+        },
+        vendor_1099: {
+          type: "boolean",
+          description: "Whether this vendor is tracked for 1099 reporting",
+        },
+        tax_identifier: {
+          type: "string",
+          description: "Vendor's tax ID (SSN or EIN). Write-only: reads back masked as XXXXX1234.",
+        },
+        term_ref: {
+          type: "string",
+          description: "Default payment terms name (e.g., 'Net 30'). Will be looked up to get ID.",
+        },
+        bill_rate: {
+          type: "number",
+          description: "Default billing rate for this vendor (optional)",
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without creating (default: true)",
+        },
+      },
+      required: ["display_name"],
+    },
+  },
+  {
+    name: "get_vendor",
+    description: "Fetch a single vendor by ID with full details including SyncToken (needed for edits). Returns name, contact info, address, 1099 status, tax ID (masked), payment terms, balance, and active status.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "The vendor ID",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "edit_vendor",
+    description: "Modify an existing vendor. Can update name, contact info, address, 1099 status, tax ID, payment terms, and active status. Set active=false to deactivate (vendors cannot be deleted in QuickBooks).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Vendor ID to edit",
+        },
+        display_name: {
+          type: "string",
+          description: "New display name (must be unique)",
+        },
+        given_name: {
+          type: "string",
+          description: "New first/given name",
+        },
+        middle_name: {
+          type: "string",
+          description: "New middle name",
+        },
+        family_name: {
+          type: "string",
+          description: "New last/family name",
+        },
+        suffix: {
+          type: "string",
+          description: "New name suffix",
+        },
+        title: {
+          type: "string",
+          description: "New name title",
+        },
+        company_name: {
+          type: "string",
+          description: "New company name",
+        },
+        print_on_check_name: {
+          type: "string",
+          description: "New check name",
+        },
+        email: {
+          type: "string",
+          description: "New primary email address",
+        },
+        phone: {
+          type: "string",
+          description: "New primary phone number",
+        },
+        mobile: {
+          type: "string",
+          description: "New mobile phone number",
+        },
+        fax: {
+          type: "string",
+          description: "New fax number",
+        },
+        website: {
+          type: "string",
+          description: "New website URL",
+        },
+        bill_address: {
+          type: "object",
+          description: "New billing address",
+          properties: {
+            line1: { type: "string" },
+            line2: { type: "string" },
+            line3: { type: "string" },
+            city: { type: "string" },
+            country_sub_division_code: { type: "string", description: "State/province code" },
+            postal_code: { type: "string" },
+            country: { type: "string" },
+          },
+        },
+        acct_num: {
+          type: "string",
+          description: "New account number with this vendor",
+        },
+        vendor_1099: {
+          type: "boolean",
+          description: "Whether to track this vendor for 1099 reporting",
+        },
+        tax_identifier: {
+          type: "string",
+          description: "New tax ID (SSN or EIN). Write-only: reads back masked.",
+        },
+        term_ref: {
+          type: "string",
+          description: "New payment terms name (e.g., 'Net 30'). Auto-resolved to ID.",
+        },
+        bill_rate: {
+          type: "number",
+          description: "New default billing rate",
+        },
+        active: {
+          type: "boolean",
+          description: "Set to false to deactivate vendor (QuickBooks equivalent of delete)",
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without saving (default: true)",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  // --- Bill Payment tools ---
+  {
+    name: "create_bill_payment",
+    description: "Record a bill payment. Links payment to vendor bills and records which account (bank or credit card) was used. This records the bookkeeping entry; it does not initiate an actual payment through QBO Bill Pay.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        vendor_name: {
+          type: "string",
+          description: "Vendor display name. Will be looked up to get ID.",
+        },
+        vendor_id: {
+          type: "string",
+          description: "Vendor ID (use if you already know it, otherwise use vendor_name)",
+        },
+        pay_type: {
+          type: "string",
+          enum: ["Check", "CreditCard"],
+          description: "Payment method: Check (includes ACH/bank transfer) or CreditCard",
+        },
+        total_amt: {
+          type: "number",
+          description: "Total payment amount",
+        },
+        txn_date: {
+          type: "string",
+          description: "Payment date in YYYY-MM-DD format (optional, defaults to today)",
+        },
+        bank_account_name: {
+          type: "string",
+          description: "Bank account name for Check payments (e.g., 'Chase (7329)'). Required for Check pay type.",
+        },
+        bank_account_id: {
+          type: "string",
+          description: "Bank account ID for Check payments (use if known, otherwise use bank_account_name)",
+        },
+        cc_account_name: {
+          type: "string",
+          description: "Credit card account name for CreditCard payments. Required for CreditCard pay type.",
+        },
+        cc_account_id: {
+          type: "string",
+          description: "Credit card account ID (use if known, otherwise use cc_account_name)",
+        },
+        bill_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "Bill IDs to link this payment to. Payment amount is split evenly across bills.",
+        },
+        memo: {
+          type: "string",
+          description: "Private memo for the payment",
+        },
+        doc_number: {
+          type: "string",
+          description: "Reference/check number",
+        },
+        department_name: {
+          type: "string",
+          description: "Department/location name. Will be looked up to get ID.",
+        },
+        department_id: {
+          type: "string",
+          description: "Department/location ID (use if known)",
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without creating (default: true)",
+        },
+      },
+      required: ["pay_type", "total_amt"],
+    },
+  },
+  {
+    name: "get_bill_payment",
+    description: "Fetch a single bill payment by ID with full details including SyncToken, vendor, pay type, amount, linked bills, and payment account.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "The bill payment ID",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "edit_bill_payment",
+    description: "Modify an existing bill payment. Can update date, memo, and reference number. Vendor, pay type, and amount changes require deleting and recreating.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Bill Payment ID to edit",
+        },
+        txn_date: {
+          type: "string",
+          description: "New payment date in YYYY-MM-DD format",
+        },
+        memo: {
+          type: "string",
+          description: "New private memo",
+        },
+        doc_number: {
+          type: "string",
+          description: "New reference/check number",
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without saving (default: true)",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  // --- Employee tools ---
+  {
+    name: "get_employee",
+    description: "Fetch a single employee by ID with full details including SyncToken, name, contact info, address, hire date, SSN (masked), and active status.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "The employee ID",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "edit_employee",
+    description: "Modify an existing employee. Can update name, contact info, check name, employee number, billable time, and active status. Set active=false to deactivate.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Employee ID to edit",
+        },
+        display_name: {
+          type: "string",
+          description: "New display name",
+        },
+        given_name: {
+          type: "string",
+          description: "New first/given name",
+        },
+        family_name: {
+          type: "string",
+          description: "New last/family name",
+        },
+        email: {
+          type: "string",
+          description: "New primary email address",
+        },
+        phone: {
+          type: "string",
+          description: "New primary phone number",
+        },
+        mobile: {
+          type: "string",
+          description: "New mobile phone number",
+        },
+        print_on_check_name: {
+          type: "string",
+          description: "New check name",
+        },
+        employee_number: {
+          type: "string",
+          description: "New employee number",
+        },
+        billable_time: {
+          type: "boolean",
+          description: "Whether to track billable time for this employee",
+        },
+        active: {
+          type: "boolean",
+          description: "Set to false to deactivate employee",
         },
         draft: {
           type: "boolean",
