@@ -237,6 +237,89 @@ The server needs these AWS permissions:
 
 ---
 
+## Multi-Company Setup
+
+If you have **one QuickBooks account with multiple companies**, you can connect them all by running a separate MCP server instance per company. Each instance uses the same Intuit developer app (same Client ID and Secret) but has its own credential file storing that company's OAuth tokens and Realm ID.
+
+> **Note**: This section covers multiple companies under a single QuickBooks account (one login, multiple company files). If you have separate QuickBooks accounts (different logins), each account requires its own Intuit developer app with its own Client ID and Secret.
+
+### 1. Create one credential file per company
+
+Each company gets its own credential file. The files only need your Client ID and Client Secret to start; the OAuth tokens and Realm ID are added when you authenticate.
+
+```bash
+mkdir -p ~/.quickbooks-mcp
+
+# Create a starter credential file for each company
+for company in acme widgets holdco; do
+  echo '{ "client_id": "YOUR_CLIENT_ID", "client_secret": "YOUR_CLIENT_SECRET" }' \
+    > ~/.quickbooks-mcp/${company}.json
+  chmod 600 ~/.quickbooks-mcp/${company}.json
+done
+```
+
+### 2. Add one MCP server entry per company
+
+In your `.mcp.json`, create a separate entry for each company. They all point to the same server binary but use different credential files via `QBO_CREDENTIAL_FILE`:
+
+```json
+{
+  "mcpServers": {
+    "quickbooks-acme": {
+      "command": "npx",
+      "args": ["-y", "quickbooks-mcp"],
+      "env": {
+        "QBO_CLIENT_ID": "ABxx...your_client_id",
+        "QBO_CLIENT_SECRET": "RRxx...your_client_secret",
+        "QBO_CREDENTIAL_FILE": "/Users/you/.quickbooks-mcp/acme.json",
+        "QBO_INLINE_OUTPUT": "true",
+        "QBO_SANDBOX": "false"
+      }
+    },
+    "quickbooks-widgets": {
+      "command": "npx",
+      "args": ["-y", "quickbooks-mcp"],
+      "env": {
+        "QBO_CLIENT_ID": "ABxx...your_client_id",
+        "QBO_CLIENT_SECRET": "RRxx...your_client_secret",
+        "QBO_CREDENTIAL_FILE": "/Users/you/.quickbooks-mcp/widgets.json",
+        "QBO_INLINE_OUTPUT": "true",
+        "QBO_SANDBOX": "false"
+      }
+    },
+    "quickbooks-holdco": {
+      "command": "npx",
+      "args": ["-y", "quickbooks-mcp"],
+      "env": {
+        "QBO_CLIENT_ID": "ABxx...your_client_id",
+        "QBO_CLIENT_SECRET": "RRxx...your_client_secret",
+        "QBO_CREDENTIAL_FILE": "/Users/you/.quickbooks-mcp/holdco.json",
+        "QBO_INLINE_OUTPUT": "true",
+        "QBO_SANDBOX": "false"
+      }
+    }
+  }
+}
+```
+
+### 3. Authenticate each company
+
+After restarting your AI assistant, authenticate each company one at a time. The OAuth flow will ask you to select which company to authorize:
+
+1. Call `qbo_authenticate` on the **quickbooks-acme** server (no arguments) to get an authorization URL
+2. Open the URL, sign in, and **select the Acme company** when prompted
+3. Copy the `code` and `realmId` from the redirect URL
+4. Call `qbo_authenticate` again with the code and realmId to complete the flow
+5. Repeat for each company
+
+Each company's OAuth tokens and Realm ID are saved to its own credential file. Tokens refresh automatically and independently.
+
+### How it works
+
+Each MCP server instance is completely independent. Your AI assistant sees them as separate tool namespaces (e.g., `quickbooks-acme__query` vs `quickbooks-widgets__query`), so you can query across all companies in parallel or work with one at a time.
+
+---
+
 ## Inline Output Mode
 
 By default, large responses (reports, query results) are written to `/tmp` files and the server returns a file path. This works well for Claude Code in terminal environments but breaks in **Claude Desktop** and **plugin environments** where the model cannot read from `/tmp`.
