@@ -8,7 +8,7 @@ import {
 } from "../../client/index.js";
 import { toCents, sumCents, toDollars, outputReport, isHttpMode } from "../../utils/index.js";
 import { PaginationParams } from "../../types/index.js";
-import { paginatedQuery, extractAccountLines } from "../../query/index.js";
+import { paginatedQuery, extractAccountLines, rawPaginatedQuery } from "../../query/index.js";
 import { TransactionLine } from "../../types/index.js";
 
 // Group transactions by unique transaction key (type:txnId)
@@ -114,10 +114,12 @@ export async function handleQueryAccountTransactions(
     { type: 'Bill', finder: 'findBills' as keyof QuickBooks },
     { type: 'Invoice', finder: 'findInvoices' as keyof QuickBooks },
     { type: 'Payment', finder: 'findPayments' as keyof QuickBooks },
+    { type: 'Transfer', finder: 'findTransfers' as keyof QuickBooks },
+    { type: 'BillPayment', finder: 'findBillPayments' as keyof QuickBooks },
   ];
 
   // Query all entity types in parallel
-  const queryResults = await Promise.all(
+  const finderResults = await Promise.all(
     entityTypes.map(async ({ type, finder }) => {
       const pagination: PaginationParams = {
         maxResults: 10000,  // Use full SAFETY_LIMIT for account transaction queries
@@ -133,6 +135,26 @@ export async function handleQueryAccountTransactions(
       }
     })
   );
+
+  // CreditCardPayment is not exposed by node-quickbooks' finder methods,
+  // so query it via raw REST API. It's the entity behind "Credit Card Pmt"
+  // register entries that pay down a CC liability from a bank account.
+  let ccPaymentEntities: Array<Record<string, unknown>> = [];
+  try {
+    ccPaymentEntities = await rawPaginatedQuery<Record<string, unknown>>(
+      client,
+      'CreditCardPayment',
+      `WHERE ${dateFilter}`,
+      10000
+    );
+  } catch {
+    // Non-fatal: if raw query fails, continue without CC payments
+  }
+
+  const queryResults = [
+    ...finderResults,
+    { type: 'CreditCardPayment', entities: ccPaymentEntities },
+  ];
 
   // Extract lines matching the account from each entity type
   const allLines: TransactionLine[] = [];

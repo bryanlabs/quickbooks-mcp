@@ -3,6 +3,8 @@
 export { handleGetCompanyInfo } from './company.js';
 export { handleQuery } from './query.js';
 export { handleListAccounts } from './accounts.js';
+export { handleCreateAccount } from './account-create.js';
+export { handleEditAccount } from './account-edit.js';
 export {
   handleGetProfitLoss,
   handleGetBalanceSheet,
@@ -17,6 +19,7 @@ export {
 } from './journal-entry.js';
 export { handleCreateBill, handleGetBill, handleEditBill } from './bill.js';
 export { handleCreateExpense, handleGetExpense, handleEditExpense } from './expense.js';
+export { handleBulkEditExpense } from './expense-bulk-edit.js';
 export { handleCreateSalesReceipt, handleGetSalesReceipt, handleEditSalesReceipt } from './sales-receipt.js';
 export { handleCreateInvoice, handleGetInvoice, handleEditInvoice } from './invoice.js';
 export { handleCreateDeposit, handleGetDeposit, handleEditDeposit } from './deposit.js';

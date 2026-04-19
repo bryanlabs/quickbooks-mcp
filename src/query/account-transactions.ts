@@ -398,6 +398,186 @@ export function extractAccountLines(
         }
         break;
       }
+
+      case 'transfer': {
+        // Transfer has FromAccountRef (money out) and ToAccountRef (money in)
+        // Amount is a single field (not split debit/credit)
+        const fromRef = entity.FromAccountRef as AccountRef | undefined;
+        const toRef = entity.ToAccountRef as AccountRef | undefined;
+        const fromAccountId = fromRef?.value || '';
+        const toAccountId = toRef?.value || '';
+        const amount = entity.Amount as number;
+        const txnDeptRef = entity.DepartmentRef as { value?: string; name?: string } | undefined;
+        const headerMatchesDept = !departmentFilter || txnDeptRef?.value === departmentFilter;
+        const privateNote = entity.PrivateNote as string | undefined;
+
+        if (!headerMatchesDept) break;
+
+        // Emit a line for the From side (money out = credit/negative)
+        if (fromAccountId) {
+          const isMatching = fromAccountId === targetAccountId;
+          if (isMatching) hasMatchingLine = true;
+
+          const fromDesc = privateNote
+            ? `${privateNote} (from)`
+            : `Transfer to ${getAccountName(toAccountId, accountCache, toRef?.name)}`;
+
+          extractedLines.push({
+            date: txnDate,
+            type: 'Transfer',
+            txnId,
+            docNumber,
+            lineId: 'from',
+            amount: -amount, // Credit to source account (money out)
+            description: fromDesc,
+            department: txnDeptRef?.name || txnDeptRef?.value,
+            qboLink,
+            accountId: fromAccountId,
+            accountName: getAccountName(fromAccountId, accountCache, fromRef?.name),
+            isMatchingLine: isMatching
+          });
+        }
+
+        // Emit a line for the To side (money in = debit/positive)
+        if (toAccountId) {
+          const isMatching = toAccountId === targetAccountId;
+          if (isMatching) hasMatchingLine = true;
+
+          const toDesc = privateNote
+            ? `${privateNote} (to)`
+            : `Transfer from ${getAccountName(fromAccountId, accountCache, fromRef?.name)}`;
+
+          extractedLines.push({
+            date: txnDate,
+            type: 'Transfer',
+            txnId,
+            docNumber,
+            lineId: 'to',
+            amount: amount, // Debit to destination account (money in)
+            description: toDesc,
+            department: txnDeptRef?.name || txnDeptRef?.value,
+            qboLink,
+            accountId: toAccountId,
+            accountName: getAccountName(toAccountId, accountCache, toRef?.name),
+            isMatchingLine: isMatching
+          });
+        }
+        break;
+      }
+
+      case 'creditcardpayment': {
+        // CreditCardPayment pays down a credit card from a bank account.
+        // BankAccountRef: bank account paying (credited / money out).
+        // CreditCardAccountRef: credit card being paid (debited / liability reduced).
+        const bankRef = entity.BankAccountRef as AccountRef | undefined;
+        const ccRef = entity.CreditCardAccountRef as AccountRef | undefined;
+        const amount = entity.Amount as number;
+        const txnDeptRef = entity.DepartmentRef as { value?: string; name?: string } | undefined;
+        const headerMatchesDept = !departmentFilter || txnDeptRef?.value === departmentFilter;
+        const privateNote = entity.PrivateNote as string | undefined;
+
+        if (!headerMatchesDept) break;
+
+        const bankId = bankRef?.value || '';
+        const ccId = ccRef?.value || '';
+
+        if (bankId) {
+          const isMatching = bankId === targetAccountId;
+          if (isMatching) hasMatchingLine = true;
+
+          extractedLines.push({
+            date: txnDate,
+            type: 'CreditCardPayment',
+            txnId,
+            docNumber,
+            lineId: 'bank',
+            amount: -amount,
+            description: privateNote || `CC payment to ${getAccountName(ccId, accountCache, ccRef?.name)}`,
+            department: txnDeptRef?.name || txnDeptRef?.value,
+            qboLink,
+            accountId: bankId,
+            accountName: getAccountName(bankId, accountCache, bankRef?.name),
+            isMatchingLine: isMatching
+          });
+        }
+
+        if (ccId) {
+          const isMatching = ccId === targetAccountId;
+          if (isMatching) hasMatchingLine = true;
+
+          extractedLines.push({
+            date: txnDate,
+            type: 'CreditCardPayment',
+            txnId,
+            docNumber,
+            lineId: 'cc',
+            amount: amount,
+            description: privateNote || `CC payment from ${getAccountName(bankId, accountCache, bankRef?.name)}`,
+            department: txnDeptRef?.name || txnDeptRef?.value,
+            qboLink,
+            accountId: ccId,
+            accountName: getAccountName(ccId, accountCache, ccRef?.name),
+            isMatchingLine: isMatching
+          });
+        }
+        break;
+      }
+
+      case 'billpayment': {
+        // Header: for Check, CheckPayment.BankAccountRef is the paying bank.
+        // For CreditCard, CreditCardPayment.CCAccountRef is the paying card.
+        // BillPayments are always money out (credit/negative) from the paying account.
+        const payType = entity.PayType as string | undefined;
+        const checkPayment = entity.CheckPayment as
+          | { BankAccountRef?: AccountRef }
+          | undefined;
+        const ccPayment = entity.CreditCardPayment as
+          | { CCAccountRef?: AccountRef }
+          | undefined;
+
+        const payingAccountRef: AccountRef | undefined =
+          payType === 'Check'
+            ? checkPayment?.BankAccountRef
+            : payType === 'CreditCard'
+              ? ccPayment?.CCAccountRef
+              : checkPayment?.BankAccountRef || ccPayment?.CCAccountRef;
+
+        const payingAccountId = payingAccountRef?.value || '';
+        const txnDeptRef = entity.DepartmentRef as { value?: string; name?: string } | undefined;
+        const headerMatchesDept = !departmentFilter || txnDeptRef?.value === departmentFilter;
+
+        if (payingAccountId && headerMatchesDept) {
+          const totalAmt = entity.TotalAmt as number;
+          const isMatching = payingAccountId === targetAccountId;
+          if (isMatching) hasMatchingLine = true;
+
+          const vendorRef = entity.VendorRef as AccountRef | undefined;
+          const vendorName = vendorRef?.name || vendorRef?.value;
+          const privateNote = entity.PrivateNote as string | undefined;
+          const description = privateNote
+            || (vendorName ? `Bill payment to ${vendorName}` : undefined);
+
+          extractedLines.push({
+            date: txnDate,
+            type: 'BillPayment',
+            txnId,
+            docNumber,
+            lineId: 'header',
+            amount: -totalAmt, // Credit to paying account (money out)
+            description,
+            department: txnDeptRef?.name || txnDeptRef?.value,
+            qboLink,
+            accountId: payingAccountId,
+            accountName: getAccountName(payingAccountId, accountCache, payingAccountRef?.name),
+            isMatchingLine: isMatching
+          });
+        }
+
+        // Note: the AP-side offset (credit to AP, debit to AP on pay) is represented
+        // on the linked Bill(s) or as an AP line; we don't synthesize it here because
+        // BillPayment.Line only carries LinkedTxn refs, not account refs.
+        break;
+      }
     }
 
     // Only include lines from transactions that have at least one matching line

@@ -382,6 +382,8 @@ QBO_INLINE_OUTPUT=true
 | **Query & Reports** | |
 | `query` | Run SQL-like queries against any QuickBooks entity |
 | `list_accounts` | List chart of accounts with filtering |
+| `create_account` | Create a new account (top-level or sub-account) in the chart of accounts |
+| `edit_account` | Rename, deactivate, re-parent, or edit description/number of an existing account |
 | `get_profit_loss` | Profit & Loss report (by month, department, class, etc.) |
 | `get_balance_sheet` | Balance Sheet report |
 | `get_trial_balance` | Trial Balance report |
@@ -399,6 +401,7 @@ QBO_INLINE_OUTPUT=true
 | `create_expense` | Create an expense (Cash, Check, or Credit Card) |
 | `get_expense` | Fetch an expense by ID |
 | `edit_expense` | Modify an existing expense |
+| `bulk_edit_expense` | Apply edit_expense to a batch of purchases in one call with per-item status |
 | **Sales Receipts** | |
 | `create_sales_receipt` | Create a sales receipt with item lines |
 | `get_sales_receipt` | Fetch a sales receipt by ID |

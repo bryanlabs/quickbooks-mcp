@@ -6,6 +6,8 @@ import {
   handleGetCompanyInfo,
   handleQuery,
   handleListAccounts,
+  handleCreateAccount,
+  handleEditAccount,
   handleGetProfitLoss,
   handleGetBalanceSheet,
   handleGetTrialBalance,
@@ -20,6 +22,7 @@ import {
   handleCreateExpense,
   handleGetExpense,
   handleEditExpense,
+  handleBulkEditExpense,
   handleCreateSalesReceipt,
   handleGetSalesReceipt,
   handleEditSalesReceipt,
@@ -59,6 +62,8 @@ const toolHandlers = new Map<string, ToolHandler>();
 toolHandlers.set("get_company_info", (client) => handleGetCompanyInfo(client));
 toolHandlers.set("query", (client, args) => handleQuery(client, args as { query: string }));
 toolHandlers.set("list_accounts", (client, args) => handleListAccounts(client, args as { account_type?: string; active_only?: boolean }));
+toolHandlers.set("create_account", (client, args) => handleCreateAccount(client, args as Parameters<typeof handleCreateAccount>[1]));
+toolHandlers.set("edit_account", (client, args) => handleEditAccount(client, args as Parameters<typeof handleEditAccount>[1]));
 toolHandlers.set("get_profit_loss", (client, args) => handleGetProfitLoss(client, args as Parameters<typeof handleGetProfitLoss>[1]));
 toolHandlers.set("get_balance_sheet", (client, args) => handleGetBalanceSheet(client, args as Parameters<typeof handleGetBalanceSheet>[1]));
 toolHandlers.set("get_trial_balance", (client, args) => handleGetTrialBalance(client, args as Parameters<typeof handleGetTrialBalance>[1]));
@@ -73,6 +78,7 @@ toolHandlers.set("edit_bill", (client, args) => handleEditBill(client, args as P
 toolHandlers.set("create_expense", (client, args) => handleCreateExpense(client, args as Parameters<typeof handleCreateExpense>[1]));
 toolHandlers.set("get_expense", (client, args) => handleGetExpense(client, args as { id: string }));
 toolHandlers.set("edit_expense", (client, args) => handleEditExpense(client, args as Parameters<typeof handleEditExpense>[1]));
+toolHandlers.set("bulk_edit_expense", (client, args) => handleBulkEditExpense(client, args as Parameters<typeof handleBulkEditExpense>[1]));
 toolHandlers.set("create_sales_receipt", (client, args) => handleCreateSalesReceipt(client, args as Parameters<typeof handleCreateSalesReceipt>[1]));
 toolHandlers.set("get_sales_receipt", (client, args) => handleGetSalesReceipt(client, args as { id: string }));
 toolHandlers.set("edit_sales_receipt", (client, args) => handleEditSalesReceipt(client, args as Parameters<typeof handleEditSalesReceipt>[1]));

@@ -64,6 +64,94 @@ export const toolDefinitions = [
     },
   },
   {
+    name: "create_account",
+    description: "Create a new account in the chart of accounts. Supports top-level accounts and sub-accounts (via parent_account_name or parent_account_id). account_type must match the QBO AccountType enum (e.g., 'Bank', 'Expense', 'Income', 'Other Current Asset', 'Fixed Asset', 'Other Current Liability', 'Equity', 'Accounts Receivable'). When creating a sub-account, the child's account_type must equal the parent's account_type. Defaults draft=true for preview.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: "Account name (must be unique within its parent; e.g., 'Amazon Prime', 'Due from Cosmos Labs')",
+        },
+        account_type: {
+          type: "string",
+          description: "QBO AccountType (e.g., 'Bank', 'Expense', 'Income', 'Other Current Asset', 'Fixed Asset', 'Other Current Liability', 'Equity', 'Accounts Receivable', 'Other Income', 'Other Expense', 'Cost of Goods Sold')",
+        },
+        account_sub_type: {
+          type: "string",
+          description: "Optional QBO AccountSubType (e.g., 'Checking', 'OtherCurrentAssets', 'SuppliesMaterials', 'OwnersEquity'). If omitted, QBO picks a default based on AccountType.",
+        },
+        description: {
+          type: "string",
+          description: "Optional description shown in the chart of accounts",
+        },
+        acct_num: {
+          type: "string",
+          description: "Optional user-facing account number",
+        },
+        parent_account_name: {
+          type: "string",
+          description: "Parent account FullyQualifiedName (e.g., 'Subscriptions', 'Pet Care and Supplies') or simple Name. Creates a sub-account under this parent. Either parent_account_name or parent_account_id may be provided, not both.",
+        },
+        parent_account_id: {
+          type: "string",
+          description: "Parent account ID (alternative to parent_account_name).",
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without creating (default: true)",
+        },
+      },
+      required: ["name", "account_type"],
+    },
+  },
+  {
+    name: "edit_account",
+    description: "Edit an existing account in the chart of accounts. Supports renaming, changing description/account number, activating or deactivating (soft-delete), and moving an account under a different parent (or promoting it to top-level with clear_parent). AccountType cannot be changed. Defaults draft=true.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Account ID to edit",
+        },
+        name: {
+          type: "string",
+          description: "New account name (optional)",
+        },
+        description: {
+          type: "string",
+          description: "New description (optional, pass empty string to clear)",
+        },
+        acct_num: {
+          type: "string",
+          description: "New user-facing account number (optional, pass empty string to clear)",
+        },
+        active: {
+          type: "boolean",
+          description: "Set to false to deactivate, true to reactivate. QuickBooks equivalent of delete is deactivate.",
+        },
+        parent_account_name: {
+          type: "string",
+          description: "Move the account under a different parent by FullyQualifiedName or Name. Parent AccountType must match this account's AccountType.",
+        },
+        parent_account_id: {
+          type: "string",
+          description: "Move the account under a different parent by ID. Alternative to parent_account_name.",
+        },
+        clear_parent: {
+          type: "boolean",
+          description: "Promote a sub-account to top-level (removes ParentRef).",
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without applying (default: true)",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "get_profit_loss",
     description: "Get a Profit and Loss (Income Statement) report. Can be broken down by department/location.",
     inputSchema: {
@@ -588,6 +676,72 @@ export const toolDefinitions = [
         },
       },
       required: ["id"],
+    },
+  },
+  {
+    name: "bulk_edit_expense",
+    description: "Apply edit_expense to a batch of purchases in one call. Processes sequentially and returns per-item status. Each item supports the same fields as edit_expense (id required; any of txn_date, memo, payment_account, department_name, entity_name/entity_id, lines). Draft mode previews all edits before applying. Failures in one item do not abort the rest.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        edits: {
+          type: "array",
+          description: "Array of expense edits to apply. Each item has the same shape as edit_expense arguments.",
+          items: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+                description: "Expense (Purchase) ID to edit (required per item)",
+              },
+              txn_date: {
+                type: "string",
+                description: "New transaction date in YYYY-MM-DD format (optional)",
+              },
+              memo: {
+                type: "string",
+                description: "New private memo (optional)",
+              },
+              payment_account: {
+                type: "string",
+                description: "New payment account name/number (Bank or Credit Card account)",
+              },
+              department_name: {
+                type: "string",
+                description: "Header-level department/location name (auto-resolved to ID)",
+              },
+              entity_name: {
+                type: "string",
+                description: "Payee/vendor display name (auto-resolved to ID)",
+              },
+              entity_id: {
+                type: "string",
+                description: "Payee/vendor ID",
+              },
+              lines: {
+                type: "array",
+                description: "Line modifications. Provide line_id to update existing, omit to add new.",
+                items: {
+                  type: "object",
+                  properties: {
+                    line_id: { type: "string" },
+                    account_name: { type: "string" },
+                    amount: { type: "number" },
+                    description: { type: "string" },
+                    delete: { type: "boolean" },
+                  },
+                },
+              },
+            },
+            required: ["id"],
+          },
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview for every item without saving (default: true). Set false to apply all edits.",
+        },
+      },
+      required: ["edits"],
     },
   },
   {
