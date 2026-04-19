@@ -159,9 +159,12 @@ export async function handleDeleteEntity(
     };
   }
 
-  // Execute delete
+  // Execute delete.
+  // Pass the bare ID so node-quickbooks fetches the entity first and includes
+  // the SyncToken — posting { Id: id } alone loses SyncToken and QBO rejects
+  // the request.
   await promisify<unknown>((cb) =>
-    (client as any)[config.deleteMethod]({ Id: id }, cb)
+    (client as any)[config.deleteMethod](id, cb)
   );
 
   return {
