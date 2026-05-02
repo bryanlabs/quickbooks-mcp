@@ -48,6 +48,7 @@ import {
   handleEditEmployee,
   handleDeleteEntity,
   handleAuthenticate,
+  handleCreateAttachment,
 } from "./handlers/index.js";
 
 export { toolDefinitions } from "./definitions.js";
@@ -103,6 +104,7 @@ toolHandlers.set("edit_bill_payment", (client, args) => handleEditBillPayment(cl
 toolHandlers.set("get_employee", (client, args) => handleGetEmployee(client, args as { id: string }));
 toolHandlers.set("edit_employee", (client, args) => handleEditEmployee(client, args as Parameters<typeof handleEditEmployee>[1]));
 toolHandlers.set("delete_entity", (client, args) => handleDeleteEntity(client, args as Parameters<typeof handleDeleteEntity>[1]));
+toolHandlers.set("create_attachment", (client, args) => handleCreateAttachment(client, args as Parameters<typeof handleCreateAttachment>[1]));
 
 // Execute tool with auth retry logic
 export async function executeTool(

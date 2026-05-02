@@ -435,6 +435,8 @@ QBO_INLINE_OUTPUT=true
 | `edit_employee` | Modify an existing employee (set active=false to deactivate) |
 | **Delete** | |
 | `delete_entity` | Delete any transaction (journal entry, bill, invoice, deposit, sales receipt, expense, vendor credit, bill payment) |
+| **Attachments** | |
+| `create_attachment` | Upload a file from disk and link it to an existing QBO entity (Bill, Invoice, Purchase/Expense, JournalEntry, etc.) |
 
 ---
 

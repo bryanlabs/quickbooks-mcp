@@ -2180,4 +2180,42 @@ export const toolDefinitions = [
       required: ["id"],
     },
   },
+  {
+    name: "create_attachment",
+    description: "Upload a file to QuickBooks as an Attachable and link it to an existing entity (e.g., a Bill, Invoice, or Purchase). Reads the file from disk via file_path. Content type is inferred from the file extension when not provided. Defaults draft=true for preview; set draft=false to actually upload. Useful for attaching vendor invoice PDFs to staged bills.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Absolute path on the local filesystem to the file to upload (e.g., '/Users/dan/Invoices/INV-1310.pdf').",
+        },
+        entity_type: {
+          type: "string",
+          description: "QBO entity type the attachment will be linked to. Common values: 'Bill', 'Invoice', 'Purchase' (Expense), 'JournalEntry', 'BillPayment', 'VendorCredit', 'CreditMemo', 'SalesReceipt', 'Deposit', 'Customer', 'Vendor'.",
+        },
+        entity_id: {
+          type: "string",
+          description: "Id of the QBO entity to link the attachment to (e.g., the Bill's Id).",
+        },
+        file_name: {
+          type: "string",
+          description: "Optional filename to display in QBO. Defaults to the basename of file_path.",
+        },
+        content_type: {
+          type: "string",
+          description: "Optional MIME type. Inferred from extension when omitted (.pdf, .png, .jpg, .docx, .xlsx, .csv, etc.). Falls back to application/octet-stream.",
+        },
+        note: {
+          type: "string",
+          description: "Optional note shown in the draft preview only (not stored on the Attachable).",
+        },
+        draft: {
+          type: "boolean",
+          description: "If true, validate and show preview without uploading (default: true).",
+        },
+      },
+      required: ["file_path", "entity_type", "entity_id"],
+    },
+  },
 ];

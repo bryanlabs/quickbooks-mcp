@@ -30,3 +30,4 @@ export { handleCreateBillPayment, handleGetBillPayment, handleEditBillPayment } 
 export { handleGetEmployee, handleEditEmployee } from './employee.js';
 export { handleDeleteEntity } from './delete.js';
 export { handleAuthenticate } from './authenticate.js';
+export { handleCreateAttachment } from './attachment.js';
