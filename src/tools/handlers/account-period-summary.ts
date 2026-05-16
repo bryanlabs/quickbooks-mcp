@@ -135,9 +135,10 @@ export async function handleAccountPeriodSummary(
     end_date?: string;
     department?: string;
     accounting_method?: string;
+    testing_migration?: boolean;
   }
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const { account, start_date, end_date, department, accounting_method } = args;
+  const { account, start_date, end_date, department, accounting_method, testing_migration } = args;
 
   // Resolve account using cache
   const resolvedAccount = await resolveAccount(client, account);
@@ -160,6 +161,9 @@ export async function handleAccountPeriodSummary(
   }
   if (accounting_method) {
     options.accounting_method = accounting_method;
+  }
+  if (testing_migration) {
+    options.testing_migration = "true";
   }
 
   // Call the GeneralLedger report
@@ -216,6 +220,7 @@ export async function handleAccountPeriodSummary(
     },
     department: department || undefined,
     accountingMethod: accounting_method || "Accrual",
+    testingMigration: testing_migration || undefined,
     summary,
   };
 

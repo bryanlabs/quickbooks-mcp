@@ -32,6 +32,7 @@ export async function handleEditAccount(
     parent_account_name?: string;
     parent_account_id?: string;
     clear_parent?: boolean;
+    account_sub_type?: string;
     draft?: boolean;
   }
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
@@ -44,6 +45,7 @@ export async function handleEditAccount(
     parent_account_name,
     parent_account_id,
     clear_parent,
+    account_sub_type,
     draft = true,
   } = args;
 
@@ -73,6 +75,8 @@ export async function handleEditAccount(
   if (description !== undefined) update.Description = description;
   if (acct_num !== undefined) update.AcctNum = acct_num;
   if (active !== undefined) update.Active = active;
+  if (account_sub_type !== undefined) update.AccountSubType = account_sub_type;
+  else if (current.AccountSubType) update.AccountSubType = current.AccountSubType;
 
   let parentInfo: { id: string; name: string; accountType?: string } | undefined;
   if (clear_parent) {
@@ -112,6 +116,7 @@ export async function handleEditAccount(
     if (description !== undefined && description !== current.Description) changes.push(`Description: "${current.Description ?? ''}" -> "${description}"`);
     if (acct_num !== undefined && acct_num !== current.AcctNum) changes.push(`Account #: "${current.AcctNum ?? ''}" -> "${acct_num}"`);
     if (active !== undefined && active !== current.Active) changes.push(`Active: ${current.Active !== false} -> ${active}`);
+    if (account_sub_type !== undefined && account_sub_type !== current.AccountSubType) changes.push(`Sub Type: "${current.AccountSubType ?? ''}" -> "${account_sub_type}"`);
     if (clear_parent) changes.push(`Parent: "${current.ParentRef?.name ?? ''}" -> (none, promoted to top-level)`);
     else if (parentInfo) changes.push(`Parent: "${current.ParentRef?.name ?? '(none)'}" -> "${parentInfo.name}"`);
 

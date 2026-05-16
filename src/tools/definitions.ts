@@ -143,6 +143,10 @@ export const toolDefinitions = [
           type: "boolean",
           description: "Promote a sub-account to top-level (removes ParentRef).",
         },
+        account_sub_type: {
+          type: "string",
+          description: "New AccountSubType (e.g., 'OtherLongTermAssets', 'Investment_Other'). Must be valid for this account's AccountType. AccountType itself cannot be changed.",
+        },
         draft: {
           type: "boolean",
           description: "If true, validate and show preview without applying (default: true)",
@@ -177,6 +181,10 @@ export const toolDefinitions = [
           type: "string",
           description: "Accounting method: 'Accrual' (default) or 'Cash'",
         },
+        testing_migration: {
+          type: "boolean",
+          description: "If true, route the report through Intuit's modernized Reports API response for migration testing.",
+        },
       },
       required: [],
     },
@@ -203,6 +211,10 @@ export const toolDefinitions = [
           type: "string",
           description: "Accounting method: 'Accrual' (default) or 'Cash'",
         },
+        testing_migration: {
+          type: "boolean",
+          description: "If true, route the report through Intuit's modernized Reports API response for migration testing.",
+        },
       },
       required: [],
     },
@@ -224,6 +236,10 @@ export const toolDefinitions = [
         accounting_method: {
           type: "string",
           description: "Accounting method: 'Accrual' (default) or 'Cash'",
+        },
+        testing_migration: {
+          type: "boolean",
+          description: "If true, route the report through Intuit's modernized Reports API response for migration testing.",
         },
       },
       required: [],
@@ -280,6 +296,10 @@ export const toolDefinitions = [
         accounting_method: {
           type: "string",
           description: "Accounting method: 'Accrual' (default) or 'Cash'",
+        },
+        testing_migration: {
+          type: "boolean",
+          description: "If true, route the report through Intuit's modernized Reports API response for migration testing.",
         },
       },
       required: ["account"],

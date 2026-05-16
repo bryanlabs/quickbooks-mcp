@@ -14,9 +14,10 @@ export async function handleGetProfitLoss(
     summarize_by?: string;
     department?: string;
     accounting_method?: string;
+    testing_migration?: boolean;
   }
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const { start_date, end_date, summarize_by, department, accounting_method } = args;
+  const { start_date, end_date, summarize_by, department, accounting_method, testing_migration } = args;
 
   const options: Record<string, string> = {};
   if (start_date) options.start_date = start_date;
@@ -24,6 +25,7 @@ export async function handleGetProfitLoss(
   if (summarize_by) options.summarize_column_by = summarize_by;
   if (department) options.department = await resolveDepartmentId(client, department);
   if (accounting_method) options.accounting_method = accounting_method;
+  if (testing_migration) options.testing_migration = "true";
 
   const result = await promisify<unknown>((cb) =>
     client.reportProfitAndLoss(options, cb)
@@ -40,9 +42,10 @@ export async function handleGetBalanceSheet(
     summarize_by?: string;
     department?: string;
     accounting_method?: string;
+    testing_migration?: boolean;
   }
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const { as_of_date, summarize_by, department, accounting_method } = args;
+  const { as_of_date, summarize_by, department, accounting_method, testing_migration } = args;
 
   const options: Record<string, string> = {};
   if (as_of_date) {
@@ -54,6 +57,7 @@ export async function handleGetBalanceSheet(
   if (summarize_by) options.summarize_column_by = summarize_by;
   if (department) options.department = await resolveDepartmentId(client, department);
   if (accounting_method) options.accounting_method = accounting_method;
+  if (testing_migration) options.testing_migration = "true";
 
   const result = await promisify<unknown>((cb) =>
     client.reportBalanceSheet(options, cb)
@@ -69,14 +73,16 @@ export async function handleGetTrialBalance(
     start_date?: string;
     end_date?: string;
     accounting_method?: string;
+    testing_migration?: boolean;
   }
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const { start_date, end_date, accounting_method } = args;
+  const { start_date, end_date, accounting_method, testing_migration } = args;
 
   const options: Record<string, string> = {};
   if (start_date) options.start_date = start_date;
   if (end_date) options.end_date = end_date;
   if (accounting_method) options.accounting_method = accounting_method;
+  if (testing_migration) options.testing_migration = "true";
 
   const result = await promisify<unknown>((cb) =>
     client.reportTrialBalance(options, cb)
