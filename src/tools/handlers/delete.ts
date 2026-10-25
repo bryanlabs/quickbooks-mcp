@@ -2,7 +2,6 @@
 
 import QuickBooks from "node-quickbooks";
 import { promisify } from "../../client/index.js";
-import { formatDollars } from "../../utils/index.js";
 
 type EntityType = "journal_entry" | "bill" | "invoice" | "deposit" | "sales_receipt" | "expense" | "vendor_credit" | "bill_payment";
 
@@ -11,6 +10,10 @@ interface EntityConfig {
   deleteMethod: string;
   label: string;
   formatSummary: (entity: Record<string, unknown>) => string;
+}
+
+function formatEntityDollars(amount: number): string {
+  return amount.toFixed(2);
 }
 
 const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
@@ -22,7 +25,7 @@ const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       const lines = [`Journal Entry #${e.Id}`];
       lines.push(`  Date: ${e.TxnDate}`);
       if (e.DocNumber) lines.push(`  Journal no.: ${e.DocNumber}`);
-      if (e.TotalAmt != null) lines.push(`  Total: ${formatDollars(e.TotalAmt as number)}`);
+      if (e.TotalAmt != null) lines.push(`  Total: ${formatEntityDollars(e.TotalAmt as number)}`);
       if (e.PrivateNote) lines.push(`  Memo: ${e.PrivateNote}`);
       return lines.join("\n");
     },
@@ -37,7 +40,7 @@ const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       lines.push(`  Date: ${e.TxnDate}`);
       if (e.DueDate) lines.push(`  Due: ${e.DueDate}`);
       if (e.DocNumber) lines.push(`  Ref no.: ${e.DocNumber}`);
-      if (e.TotalAmt != null) lines.push(`  Total: ${formatDollars(e.TotalAmt as number)}`);
+      if (e.TotalAmt != null) lines.push(`  Total: ${formatEntityDollars(e.TotalAmt as number)}`);
       if (e.PrivateNote) lines.push(`  Memo: ${e.PrivateNote}`);
       return lines.join("\n");
     },
@@ -52,8 +55,8 @@ const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       lines.push(`  Date: ${e.TxnDate}`);
       if (e.DueDate) lines.push(`  Due: ${e.DueDate}`);
       if (e.DocNumber) lines.push(`  Ref no.: ${e.DocNumber}`);
-      if (e.TotalAmt != null) lines.push(`  Total: ${formatDollars(e.TotalAmt as number)}`);
-      if (e.Balance != null) lines.push(`  Balance: ${formatDollars(e.Balance as number)}`);
+      if (e.TotalAmt != null) lines.push(`  Total: ${formatEntityDollars(e.TotalAmt as number)}`);
+      if (e.Balance != null) lines.push(`  Balance: ${formatEntityDollars(e.Balance as number)}`);
       if (e.PrivateNote) lines.push(`  Memo: ${e.PrivateNote}`);
       return lines.join("\n");
     },
@@ -66,7 +69,7 @@ const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       const acct = (e.DepositToAccountRef as Record<string, string>)?.name || "(unknown account)";
       const lines = [`Deposit #${e.Id} — to ${acct}`];
       lines.push(`  Date: ${e.TxnDate}`);
-      if (e.TotalAmt != null) lines.push(`  Total: ${formatDollars(e.TotalAmt as number)}`);
+      if (e.TotalAmt != null) lines.push(`  Total: ${formatEntityDollars(e.TotalAmt as number)}`);
       if (e.PrivateNote) lines.push(`  Memo: ${e.PrivateNote}`);
       return lines.join("\n");
     },
@@ -80,7 +83,7 @@ const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       const lines = [`Sales Receipt #${e.Id} — ${customer}`];
       lines.push(`  Date: ${e.TxnDate}`);
       if (e.DocNumber) lines.push(`  Ref no.: ${e.DocNumber}`);
-      if (e.TotalAmt != null) lines.push(`  Total: ${formatDollars(e.TotalAmt as number)}`);
+      if (e.TotalAmt != null) lines.push(`  Total: ${formatEntityDollars(e.TotalAmt as number)}`);
       if (e.PrivateNote) lines.push(`  Memo: ${e.PrivateNote}`);
       return lines.join("\n");
     },
@@ -95,7 +98,7 @@ const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       lines.push(`  Date: ${e.TxnDate}`);
       if (e.PaymentType) lines.push(`  Payment type: ${e.PaymentType}`);
       if (e.DocNumber) lines.push(`  Ref no.: ${e.DocNumber}`);
-      if (e.TotalAmt != null) lines.push(`  Total: ${formatDollars(e.TotalAmt as number)}`);
+      if (e.TotalAmt != null) lines.push(`  Total: ${formatEntityDollars(e.TotalAmt as number)}`);
       if (e.PrivateNote) lines.push(`  Memo: ${e.PrivateNote}`);
       return lines.join("\n");
     },
@@ -109,7 +112,7 @@ const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       const lines = [`Vendor Credit #${e.Id} — ${vendor}`];
       lines.push(`  Date: ${e.TxnDate}`);
       if (e.DocNumber) lines.push(`  Ref no.: ${e.DocNumber}`);
-      if (e.TotalAmt != null) lines.push(`  Total: ${formatDollars(e.TotalAmt as number)}`);
+      if (e.TotalAmt != null) lines.push(`  Total: ${formatEntityDollars(e.TotalAmt as number)}`);
       if (e.PrivateNote) lines.push(`  Memo: ${e.PrivateNote}`);
       return lines.join("\n");
     },
@@ -124,7 +127,7 @@ const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       lines.push(`  Date: ${e.TxnDate}`);
       if (e.PayType) lines.push(`  Pay type: ${e.PayType}`);
       if (e.DocNumber) lines.push(`  Ref no.: ${e.DocNumber}`);
-      if (e.TotalAmt != null) lines.push(`  Total: ${formatDollars(e.TotalAmt as number)}`);
+      if (e.TotalAmt != null) lines.push(`  Total: ${formatEntityDollars(e.TotalAmt as number)}`);
       if (e.PrivateNote) lines.push(`  Memo: ${e.PrivateNote}`);
       return lines.join("\n");
     },
@@ -159,12 +162,19 @@ export async function handleDeleteEntity(
     };
   }
 
-  // Execute delete.
-  // Pass the bare ID so node-quickbooks fetches the entity first and includes
-  // the SyncToken — posting { Id: id } alone loses SyncToken and QBO rejects
-  // the request.
+  // Execute delete. QBO rejects the full entity returned by a read because it
+  // contains read-only fields. Fetch the current SyncToken, then send only the
+  // fields required by the delete operation.
+  const entity = await promisify<Record<string, unknown>>((cb) =>
+    (client as any)[config.getMethod](id, cb)
+  );
+  const syncToken = entity.SyncToken;
+  if (syncToken == null) {
+    throw new Error(`${config.label} #${id} is missing a SyncToken and cannot be deleted safely.`);
+  }
+
   await promisify<unknown>((cb) =>
-    (client as any)[config.deleteMethod](id, cb)
+    (client as any)[config.deleteMethod]({ Id: id, SyncToken: syncToken }, cb)
   );
 
   return {
