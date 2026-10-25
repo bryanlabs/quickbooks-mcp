@@ -58,12 +58,15 @@ export class LocalCredentialProvider implements CredentialProvider {
     const dir = dirname(this.credentialPath);
     await fs.mkdir(dir, { recursive: true });
 
-    // Write credentials file
+    // Write to a temp file and rename, so a crash mid-write never leaves a
+    // truncated file in place of the only copy of the refresh token
+    const tempPath = `${this.credentialPath}.${process.pid}.tmp`;
     await fs.writeFile(
-      this.credentialPath,
+      tempPath,
       JSON.stringify(credentials, null, 2),
       { mode: 0o600 } // Readable only by owner
     );
+    await fs.rename(tempPath, this.credentialPath);
   }
 
   async getCompanyId(): Promise<string> {
