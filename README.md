@@ -52,7 +52,7 @@ Store credentials locally for personal use, or in AWS Secrets Manager for shared
 ## Prerequisites
 
 - **QuickBooks Developer Account**: Register at [developer.intuit.com](https://developer.intuit.com)
-- **Node.js 18+**
+- **Node.js 26** (the Active LTS line, pinned in `.nvmrc` and `engines`)
 
 ## Installation Options
 

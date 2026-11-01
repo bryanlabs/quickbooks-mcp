@@ -1,13 +1,19 @@
-// OAuth client wrapper for QuickBooks authentication
+// OAuth 2.0 client for QuickBooks authentication (Intuit's authorize and token endpoints)
 
-import OAuthClient from "intuit-oauth";
+import { randomBytes } from "node:crypto";
 import type { QBCredentials } from "./types.js";
 
 // Intuit's OAuth Playground redirect URL - works for both sandbox and production
 const PLAYGROUND_REDIRECT_URL = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl";
 
+// Intuit OAuth 2.0 endpoints (the same for sandbox and production)
+const AUTHORIZE_ENDPOINT = "https://appcenter.intuit.com/connect/oauth2";
+const TOKEN_ENDPOINT = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+
 // Required scopes for QuickBooks Online accounting access
-const REQUIRED_SCOPES = [OAuthClient.scopes.Accounting];
+const REQUIRED_SCOPES = ["com.intuit.quickbooks.accounting"];
+
+const TOKEN_REQUEST_TIMEOUT_MS = 30_000;
 
 /**
  * Get the environment setting (sandbox or production)
@@ -16,27 +22,66 @@ function getEnvironment(): "sandbox" | "production" {
   return process.env.QBO_SANDBOX === "true" ? "sandbox" : "production";
 }
 
+interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+}
+
 /**
- * Create an OAuth client instance with client credentials
+ * POST a grant to Intuit's token endpoint and return the new token pair
  */
-export function createOAuthClient(clientId: string, clientSecret: string): OAuthClient {
-  return new OAuthClient({
-    clientId,
-    clientSecret,
-    environment: getEnvironment(),
-    redirectUri: PLAYGROUND_REDIRECT_URL,
+async function requestTokens(
+  clientId: string,
+  clientSecret: string,
+  grant: Record<string, string>
+): Promise<TokenResponse> {
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const response = await fetch(TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: new URLSearchParams(grant).toString(),
+    signal: AbortSignal.timeout(TOKEN_REQUEST_TIMEOUT_MS),
   });
+
+  const text = await response.text();
+  let json: Record<string, unknown> = {};
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    // Non-JSON body, reported below by status
+  }
+
+  if (!response.ok) {
+    const error = typeof json.error === "string" ? json.error : `HTTP ${response.status}`;
+    const description = typeof json.error_description === "string" ? `: ${json.error_description}` : "";
+    const tid = response.headers.get("intuit_tid");
+    throw new Error(`Token request failed (${response.status}) ${error}${description}${tid ? ` (intuit_tid ${tid})` : ""}`);
+  }
+
+  if (typeof json.access_token !== "string" || typeof json.refresh_token !== "string") {
+    throw new Error("Token response did not include access_token and refresh_token");
+  }
+
+  return { access_token: json.access_token, refresh_token: json.refresh_token };
 }
 
 /**
  * Generate the authorization URL for OAuth flow
  * User visits this URL to authorize the app
  */
-export function generateAuthorizationUrl(clientId: string, clientSecret: string): string {
-  const oauthClient = createOAuthClient(clientId, clientSecret);
-  return oauthClient.authorizeUri({
-    scope: REQUIRED_SCOPES,
+export function generateAuthorizationUrl(clientId: string, _clientSecret: string): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: PLAYGROUND_REDIRECT_URL,
+    response_type: "code",
+    scope: REQUIRED_SCOPES.join(" "),
+    state: randomBytes(18).toString("base64url"),
   });
+  return `${AUTHORIZE_ENDPOINT}?${params.toString()}`;
 }
 
 /**
@@ -56,14 +101,11 @@ export async function exchangeCodeForTokens(
   authorizationCode: string,
   realmId: string
 ): Promise<TokenExchangeResult> {
-  const oauthClient = createOAuthClient(clientId, clientSecret);
-
-  // Build the callback URL format that intuit-oauth expects
-  const callbackUrl = `${PLAYGROUND_REDIRECT_URL}?code=${encodeURIComponent(authorizationCode)}&realmId=${encodeURIComponent(realmId)}`;
-
-  // Exchange code for tokens
-  const authResponse = await oauthClient.createToken(callbackUrl);
-  const token = authResponse.getToken();
+  const token = await requestTokens(clientId, clientSecret, {
+    grant_type: "authorization_code",
+    code: authorizationCode,
+    redirect_uri: PLAYGROUND_REDIRECT_URL,
+  });
 
   const credentials: QBCredentials = {
     client_id: clientId,
@@ -84,17 +126,10 @@ export async function exchangeCodeForTokens(
  * Refresh access token using a refresh token
  */
 export async function refreshAccessToken(credentials: QBCredentials): Promise<QBCredentials> {
-  const oauthClient = createOAuthClient(credentials.client_id, credentials.client_secret);
-
-  // Set the current refresh token
-  oauthClient.setToken({
+  const token = await requestTokens(credentials.client_id, credentials.client_secret, {
+    grant_type: "refresh_token",
     refresh_token: credentials.refresh_token,
-    access_token: credentials.access_token,
   });
-
-  // Refresh the token
-  const authResponse = await oauthClient.refresh();
-  const token = authResponse.getToken();
 
   return {
     ...credentials,

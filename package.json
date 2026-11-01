@@ -19,9 +19,12 @@
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=26"
+  },
   "scripts": {
     "build": "tsc",
-    "build:lambda": "esbuild src/lambda.ts --bundle --platform=node --target=node22 --outfile=dist-lambda/handler.mjs --format=esm --external:@aws-sdk/* --banner:js='import { createRequire } from \"module\"; const require = createRequire(import.meta.url);'",
+    "build:lambda": "esbuild src/lambda.ts --bundle --platform=node --target=node26 --outfile=dist-lambda/handler.mjs --format=esm --external:@aws-sdk/* --banner:js='import { createRequire } from \"module\"; const require = createRequire(import.meta.url);'",
     "prepare": "npm run build",
     "start": "node dist/index.js",
     "start:http": "node dist/http.js",
@@ -37,22 +40,23 @@
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.700.0",
     "@aws-sdk/client-ssm": "^3.700.0",
-    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "dotenv": "^17.2.3",
-    "intuit-oauth": "^4.2.2",
     "jose": "^6.1.0",
     "node-quickbooks": "^2.0.47",
     "tmp": "^0.2.7"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^26.6.6",
     "@types/tmp": "^0.2.6",
     "esbuild": "^0.25.0",
     "typescript": "^5.3.0"
   },
   "overrides": {
-    "fast-xml-parser@^5.0.0": "5.7.0",
+    "@hono/node-server": "2.1.5",
+    "fast-xml-parser": "5.7.0",
     "ip-address": "10.7.4",
-    "underscore": "1.13.8"
+    "underscore": "1.13.8",
+    "uuid": "11.1.1"
   }
 }

@@ -93,7 +93,7 @@ export async function getClient(): Promise<QuickBooks> {
     credentials.refresh_token = tokenInfo.refresh_token;
     await provider.saveCredentials(credentials);
   } catch (refreshError) {
-    // For local mode, try using intuit-oauth for refresh as a fallback
+    // For local mode, retry the refresh directly against the token endpoint
     if (isLocalMode()) {
       try {
         credentials = await refreshAccessToken(credentials);
